@@ -1,3 +1,20 @@
+# Ambiente Virtual
 venv/
+env/
+.venv/
+
+# Variáveis de Ambiente (CRÍTICO)
+.env
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
