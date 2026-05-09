@@ -1,18 +1,25 @@
 import os
 import json
-from fastapi import APIRouter, Request, HTTPException, Query, Body
+from fastapi import APIRouter, Request, HTTPException, Query, Body, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 from dotenv import load_dotenv
 
 from services.ia_service import processar_mensagem_com_memoria
+from services.whatsapp_service import enviar_mensagem_whatsapp
 
 load_dotenv()
 
-# Instancia o roteador para esse módulo
 router = APIRouter()
-
-# Token de verificação que você vai cadastrar no painel da Meta
 META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "agentos_secreto_123")
+
+# --- Nova Função Wrapper para Background ---
+async def processar_e_responder(telefone_paciente: str, texto: str):
+    try:
+        resposta_ia = await processar_mensagem_com_memoria(telefone_paciente, texto)
+        await enviar_mensagem_whatsapp(telefone_paciente, resposta_ia)
+        print(f"✅ [AgentOS] Respondeu para {telefone_paciente}: {resposta_ia}\n")
+    except Exception as e:
+        print(f"❌ Erro na task de background: {e}")
 
 @router.get("/whatsapp")
 async def verify_webhook(
@@ -33,7 +40,7 @@ async def verify_webhook(
 
 
 @router.post("/whatsapp")
-async def receive_message(payload: dict = Body(...)):
+async def receive_message(background_tasks: BackgroundTasks, payload: dict = Body(...)):
     try:
         entry = payload.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
@@ -45,13 +52,12 @@ async def receive_message(payload: dict = Body(...)):
             texto = message.get("text", {}).get("body")
             
             if texto and telefone_paciente:
-                # Dispara a inteligência da AgentOS!
-                resposta_ia = await processar_mensagem_com_memoria(telefone_paciente, texto)
-                
-                print(f"✅ [AgentOS] Respondeu para {telefone_paciente}: {resposta_ia}\n")
+                # Delega o processamento pesado para o background
+                background_tasks.add_task(processar_e_responder, telefone_paciente, texto)
 
+        # O retorno é instantâneo, evitando que a Meta cancele o Webhook
         return {"status": "success"} 
         
     except Exception as e:
         print(f"❌ Erro ao processar webhook: {e}")
-        return {"status": "error"} # O WhatsApp prefere que você não estoure erro 500
+        return {"status": "error"}
