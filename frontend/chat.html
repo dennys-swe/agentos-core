@@ -206,6 +206,15 @@
             
             if (response.ok) {
                 const data = await response.json();
+
+                // 👇 ADICIONE ESTA TRAVA AQUI 👇
+                if (data.resposta === "_SILENCE_") {
+                    console.log("Aguarde, transferindo para o setor responsável...");
+                    hideTyping();
+                    return; // Para a execução e não exibe nenhum balão
+                }
+                // --------------------------------
+
                 await processAiResponse(data.resposta);
             } else {
                 hideTyping();
