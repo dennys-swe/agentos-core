@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentOS - Simulador de Chat</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 80vh;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #00a884;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background-color: #efeae2;
+        }
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #d9fdd3;
+            border-bottom-right-radius: 0;
+        }
+        .ai-message {
+            align-self: flex-start;
+            background-color: #fff;
+            border-bottom-left-radius: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .typing-indicator {
+            align-self: flex-start;
+            background-color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-bottom-left-radius: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            display: none;
+            font-style: italic;
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: -5px;
+            margin-bottom: 5px;
+            width: fit-content;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            background-color: #f0f2f5;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 24px;
+            outline: none;
+            font-size: 1rem;
+            background-color: #fff;
+        }
+        .chat-input button {
+            background-color: #00a884;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+        .chat-input button:hover {
+            background-color: #008f6f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">AgentOS - Simulador</div>
+    <div class="chat-messages" id="chat-messages">
+        <!-- Messages will appear here -->
+        <div class="typing-indicator" id="typing-indicator">A escrever...</div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Escreva uma mensagem..." autocomplete="off">
+        <button id="send-button">➤</button>
+    </div>
+</div>
+
+<script>
+    const telefoneSimulado = "simulador_" + Math.floor(Math.random() * 1000000);
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    function addMessage(text, isUser) {
+        const div = document.createElement('div');
+        div.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+        div.innerText = text;
+        // Insert before typing indicator
+        messagesContainer.insertBefore(div, typingIndicator);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function showTyping() {
+        typingIndicator.style.display = 'block';
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function hideTyping() {
+        typingIndicator.style.display = 'none';
+    }
+
+    async function processAiResponse(responseText) {
+        // Lógica de humanização: separar por '|'
+        const parts = responseText.split('|').map(p => p.trim()).filter(p => p.length > 0);
+        
+        for (let i = 0; i < parts.length; i++) {
+            showTyping();
+            
+            // Delay aleatório entre 1000ms e 2000ms
+            const delay = Math.floor(Math.random() * 1000) + 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            hideTyping();
+            addMessage(parts[i], false);
+        }
+    }
+
+    async function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        addMessage(text, true);
+        messageInput.value = '';
+        
+        showTyping();
+
+        try {
+            const response = await fetch('/api/simulator/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    telefone: telefoneSimulado,
+                    mensagem: text
+                })
+            });
+            
+            hideTyping(); // esconder se o request demorar e já quisermos mostrar
+            
+            if (response.ok) {
+                const data = await response.json();
+                await processAiResponse(data.resposta);
+            } else {
+                addMessage("❌ Erro ao comunicar com o servidor.", false);
+            }
+        } catch (error) {
+            hideTyping();
+            addMessage("❌ Erro de rede.", false);
+        }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+
+</body>
+</html>

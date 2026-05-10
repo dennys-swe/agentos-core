@@ -1,5 +1,9 @@
+import os
 from fastapi import FastAPI
-from controllers import webhook  # Importa o módulo que acabamos de criar
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from controllers import webhook
+from services.ia_service import processar_mensagem_com_memoria
 
 app = FastAPI(
     title="AgentOS API",
@@ -24,3 +28,18 @@ async def health_check():
         "service": "AgentOS Core",
         "database": "Configurado"
     }
+
+class ChatRequest(BaseModel):
+    telefone: str
+    mensagem: str
+
+@app.post("/api/simulator/chat", tags=["Simulador"])
+async def simulator_chat(request: ChatRequest):
+    resposta_ia = await processar_mensagem_com_memoria(request.telefone, request.mensagem)
+    return {"resposta": resposta_ia}
+
+@app.get("/chat", response_class=HTMLResponse, tags=["Simulador"])
+async def chat_interface():
+    html_path = os.path.join(os.path.dirname(__file__), "frontend", "chat.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return f.read()
