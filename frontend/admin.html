@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentOS - Dashboard Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+    <!-- Navbar -->
+    <nav class="bg-teal-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="font-bold text-xl flex items-center gap-2">
+                <span>🩺</span> AgentOS Admin
+            </div>
+            <div>
+                <span class="text-sm bg-teal-700 px-3 py-1 rounded-full border border-teal-500">Motor Central Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Pacientes Triados</h1>
+                <p class="text-sm text-gray-500 mt-1">Gestão de contatos capturados pelo fluxo da Inteligência Artificial.</p>
+            </div>
+            <button onclick="loadLeads()" class="bg-white hover:bg-gray-100 text-teal-600 font-semibold py-2 px-4 border border-teal-200 rounded shadow-sm text-sm transition-colors">
+                🔄 Atualizar
+            </button>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600">
+                        <tr>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider">Telefone / ID</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider">Nome do Paciente</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider">Motivo da Consulta</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider">Convênio</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 font-semibold uppercase tracking-wider text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leads-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Os dados serão injetados aqui -->
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500 italic">Carregando dados...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Função para formatar os campos e tratar valores nulos
+        function formatField(value) {
+            if (!value || value === "null") {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">Pendente</span>`;
+            }
+            return `<span class="font-medium text-gray-900">${value}</span>`;
+        }
+
+        // Função principal para buscar e popular a tabela
+        async function loadLeads() {
+            const tbody = document.getElementById('leads-table-body');
+            
+            try {
+                const response = await fetch('/api/admin/leads');
+                const leads = await response.json();
+                
+                if (leads.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Nenhum paciente encontrado.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = leads.map(lead => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-600">${lead.telefone}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${formatField(lead.nome)}</td>
+                        <td class="px-6 py-4 text-gray-600">${formatField(lead.motivo)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${formatField(lead.convenio)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 capitalize">${lead.status || 'desconhecido'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <button class="text-teal-600 hover:text-teal-900 font-medium text-sm">Detalhes</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error("Erro ao carregar leads:", error);
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-red-500">Erro ao carregar dados do servidor.</td></tr>`;
+            }
+        }
+
+        // Carrega automaticamente ao abrir a página
+        document.addEventListener("DOMContentLoaded", loadLeads);
+    </script>
+</body>
+</html>
