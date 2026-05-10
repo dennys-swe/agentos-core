@@ -16,8 +16,14 @@ META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "agentos_secreto_123")
 async def processar_e_responder(telefone_paciente: str, texto: str):
     try:
         resposta_ia = await processar_mensagem_com_memoria(telefone_paciente, texto)
-        await enviar_mensagem_whatsapp(telefone_paciente, resposta_ia)
-        print(f"✅ [AgentOS] Respondeu para {telefone_paciente}: {resposta_ia}\n")
+
+        # 👇 CORREÇÃO: Só envia se for DIFERENTE de "_SILENCE_"
+        if resposta_ia != "_SILENCE_":
+            await enviar_mensagem_whatsapp(telefone_paciente, resposta_ia)
+            print(f"✅ [AgentOS] Respondeu para {telefone_paciente}: {resposta_ia}\n")
+        else:
+            print(f"⏸️ [AgentOS] Transbordo ativo para {telefone_paciente}. Nenhuma mensagem enviada para a Meta.\n")
+            
     except Exception as e:
         print(f"❌ Erro na task de background: {e}")
 

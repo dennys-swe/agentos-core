@@ -33,22 +33,40 @@ FLUXO OBRIGATÓRIO DE ATENDIMENTO:
 3. CONVÊNIO OU PARTICULAR
 4. FINALIZAÇÃO DA TRIAGEM
 
-REGRAS DE EXTRAÇÃO E SAÍDA JSON:
-Sua resposta DEVE SER SEMPRE um objeto JSON válido.
+REGRAS DE EXTRAÇÃO E SAÍDA JSON (MUITO IMPORTANTE):
+Você está se comunicando com um sistema de backend.
+Sua resposta DEVE SER EXCLUSIVAMENTE um objeto JSON válido.
+Comece diretamente com {{ e termine com }}.
+
 {{
   "resposta_para_paciente": "Texto amigável com separador | para balões.",
   "dados_extraidos": {{
     "nome": "string ou null",
     "motivo": "string ou null",
     "convenio": "string ou null"
-  }}
+  }},
+  "necessita_humano": false 
 }}
-IMPORTANTE: Use o caractere "|" para separar frases em balões diferentes.
+
+ATENÇÃO: Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente, humano, recepcionista, ou se relatar uma emergência médica grave.
 """
  
 async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: str) -> str:
-    # 1. Busca ou cria a sessão no banco
+    # 1. Busca a sessão no banco
     sessao = await sessions_collection.find_one({"telefone": telefone_paciente})
+    
+    # 👇 A TRAVA DEVE FICAR AQUI, LOGO APÓS A BUSCA 👇
+    if sessao and sessao.get("owner") == "human":
+        print(f"⏸️ [Transbordo] Conversa com {telefone_paciente} pausada. IA silenciada.")
+        
+        # Apenas guarda a mensagem nova do paciente para a recepcionista ler depois
+        novo_historico = sessao.get("historico", []) + [{"role": "user", "content": texto_usuario}]
+        await sessions_collection.update_one(
+            {"telefone": telefone_paciente},
+            {"$set": {"historico": novo_historico}}
+        )
+        return "_SILENCE_" 
+    # --------------------------------------------------
     
     historico_bd = []
     if sessao:
@@ -61,7 +79,8 @@ async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: 
             "nome": None,
             "motivo": None,
             "convenio": None,
-            "status": "triagem_iniciada"
+            "status": "triagem_iniciada",
+            "owner": "bot"
         })
  
     # 2. Criamos o Prompt de Sistema DINÂMICO
@@ -86,15 +105,33 @@ async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: 
 
         # --- LÓGICA DE LIMPEZA E EXTRAÇÃO ROBUSTA ---
         try:
-            # Remove blocos de código markdown (```json ... ```) caso a IA os envie
-            conteudo_limpo = re.sub(r'```json\s*|```\s*', '', conteudo_bruto).strip()
+            # Procura tudo que começa com { e termina com } (incluindo quebras de linha)
+            match = re.search(r'\{.*\}', conteudo_bruto, re.DOTALL)
             
+            if match:
+                conteudo_limpo = match.group(0) # Pega apenas o JSON
+            else:
+                conteudo_limpo = conteudo_bruto # Fallback de segurança
+                
             parsed_response = json.loads(conteudo_limpo)
-            texto_resposta = parsed_response.get("resposta_para_paciente", "")
+            texto_resposta = parsed_response.get("resposta_para_paciente", "Desculpe, pode repetir?")
             dados_extraidos = parsed_response.get("dados_extraidos", {})
+
+            # 👇 NOVO: Verifica se a IA pediu ajuda humana 👇
+            necessita_humano = parsed_response.get("necessita_humano", False)
+            
+            if necessita_humano:
+                print(f"🚨 [Transbordo Automático] IA solicitou humano para o paciente {telefone_paciente}.")
+                # Muda o dono da sessão para humano automaticamente!
+                await sessions_collection.update_one(
+                    {"telefone": telefone_paciente},
+                    {"$set": {"owner": "human"}}
+                )
+            
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            print(f"⚠️ Erro ao decodificar JSON: {e}. Usando texto bruto.")
-            texto_resposta = conteudo_bruto
+            print(f"⚠️ Erro crítico ao decodificar JSON: {e}. Conteúdo: {conteudo_bruto}")
+            # Se der erro grave, mandamos uma mensagem padrão em vez de cuspir código na tela
+            texto_resposta = "Desculpe, tive um pequeno lapso de memória. Poderia repetir?"
             dados_extraidos = {}
 
         # 5. Salva no banco (histórico + dados estruturados)
