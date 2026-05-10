@@ -2,36 +2,55 @@ import os
 import json
 import re
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq # Importe o Groq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
 
 # Importa nossa coleção de sessões do MongoDB
 from core.database import sessions_collection 
+# Importa os dados da clínica para o prompt
+from core.config_clinica import DADOS_DA_CLINICA
 
 load_dotenv()
 
-# Instancia o modelo atualizado
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", # Notei que você usou 2.5, mas a versão estável atual é 2.0 ou 1.5
-    google_api_key=os.getenv("GEMINI_API_KEY"),
-    temperature=0.2
-)
+def get_model():
+    provider = os.getenv("MODEL_PROVIDER", "gemini").lower()
+    
+    if provider == "groq":
+        print("🚀 [AgentOS] Usando motor Groq (Llama 3.1)")
+        return ChatGroq(
+            # Se não achar a variável GROQ_MODEL, usa o llama por padrão
+            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"), 
+            api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.1
+        )
+    else:
+        print("🧠 [AgentOS] Usando motor Google (Gemini)")
+        return ChatGoogleGenerativeAI(
+            # Se não achar a variável GEMINI_MODEL, usa o 2.5-flash por padrão
+            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+            api_key=os.getenv("GEMINI_API_KEY"),
+            temperature=0.1
+        )
+# Agora o seu llm é dinâmico!
+llm = get_model()
 
-# Prompt de Sistema: A "personalidade" do agente
-PROMPT_SISTEMA = """Você é a AgentOS, a assistente virtual inteligente da Clínica Médica.
-Seu objetivo é realizar o pré-atendimento de forma profissional, empática e eficiente, enquanto extrai informações importantes.
+# --- PROMPT PRINCIPAL ---
+PROMPT_SISTEMA = """Você é a assistente virtual inteligente da Clínica AgentOS.
+Sua missão é realizar a triagem inicial dos pacientes de forma humanizada, simpática e CONCISA.
 
-DIRETRIZES DE ESTILO:
-- Use um tom profissional, mas acolhedor.
-- Seja direta: não envie textos muito longos.
-- Use emojis de forma moderada (ex: 🩺, ✅, 🗓️).
-- Nunca invente horários.
+""" + DADOS_DA_CLINICA + """
 
-FLUXO OBRIGATÓRIO DE ATENDIMENTO:
-1. SAUDAÇÃO E NOME
-2. MOTIVO DA CONSULTA
-3. CONVÊNIO OU PARTICULAR
-4. FINALIZAÇÃO DA TRIAGEM
+REGRAS DE TOM DE VOZ E ESTILO (OBRIGATÓRIAS):
+1. Seja calorosa e educada, mas evite ser excessivamente formal ou robótica.
+2. Respostas curtas e naturais, ideais para leitura rápida no WhatsApp (1 a 2 frases curtas no máximo por balão).
+3. Evite encerramentos prolixos (ex: "Ficaremos felizes em ajudar"). Termine a mensagem fazendo a pergunta necessária para o andamento da triagem.
+
+REGRAS DE ATENDIMENTO (OBRIGATÓRIAS):
+1. NUNCA invente informações. Baseie-se APENAS nas INFORMAÇÕES OFICIAIS acima.
+2. Se o paciente pedir uma especialidade que não temos, diga educadamente que no momento só atendemos Cardiologia e Clínica Geral, e pergunte se ele deseja seguir com um desses.
+3. Se o paciente tentar agendar para o fim de semana, informe amigavelmente nosso horário de funcionamento.
+4. Se o convênio do paciente não for aceito, informe PRIMEIRO os convênios que a clínica aceita (Unimed, Bradesco, SulAmérica) e, SÓ ENTÃO, ofereça gentilmente a consulta particular por R$ 350,00 como alternativa.
 
 REGRAS DE EXTRAÇÃO E SAÍDA JSON (MUITO IMPORTANTE):
 Você está se comunicando com um sistema de backend.
@@ -48,9 +67,9 @@ Comece diretamente com {{ e termine com }}.
   "necessita_humano": false 
 }}
 
-ATENÇÃO: Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente, humano, recepcionista, ou se relatar uma emergência médica grave.
+ATENÇÃO: Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente, humano, recepcionista, ou relatar uma emergência médica grave.
 """
- 
+
 async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: str) -> str:
     # 1. Busca a sessão no banco
     sessao = await sessions_collection.find_one({"telefone": telefone_paciente})
