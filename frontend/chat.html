@@ -126,7 +126,19 @@
 </div>
 
 <script>
-    const telefoneSimulado = "simulador_" + Math.floor(Math.random() * 1000000);
+    // --- LÓGICA DE PERSISTÊNCIA ---
+    // Tenta recuperar um ID já existente no navegador
+    let telefoneSimulado = localStorage.getItem('agentos_chat_id');
+
+    // Se não existir (primeira vez ou após limpar), gera um novo e salva
+    if (!telefoneSimulado) {
+        telefoneSimulado = "simulador_" + Math.floor(Math.random() * 1000000);
+        localStorage.setItem('agentos_chat_id', telefoneSimulado);
+    }
+    
+    console.log("Conectado com a sessão:", telefoneSimulado);
+
+    // Seletores do DOM
     const messagesContainer = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
@@ -136,7 +148,6 @@
         const div = document.createElement('div');
         div.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
         div.innerText = text;
-        // Insert before typing indicator
         messagesContainer.insertBefore(div, typingIndicator);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -150,15 +161,21 @@
         typingIndicator.style.display = 'none';
     }
 
+    // Função para resetar o chat (útil para testes do zero)
+    function resetChat() {
+        if(confirm("Deseja iniciar um novo atendimento do zero?")) {
+            localStorage.removeItem('agentos_chat_id');
+            location.reload();
+        }
+    }
+
     async function processAiResponse(responseText) {
-        // Lógica de humanização: separar por '|'
         const parts = responseText.split('|').map(p => p.trim()).filter(p => p.length > 0);
         
         for (let i = 0; i < parts.length; i++) {
             showTyping();
-            
-            // Delay aleatório entre 1000ms e 2000ms
-            const delay = Math.floor(Math.random() * 1000) + 1000;
+            // Simula o tempo de digitação humana
+            const delay = Math.floor(Math.random() * 1000) + 1200;
             await new Promise(resolve => setTimeout(resolve, delay));
             
             hideTyping();
@@ -187,12 +204,11 @@
                 })
             });
             
-            hideTyping(); // esconder se o request demorar e já quisermos mostrar
-            
             if (response.ok) {
                 const data = await response.json();
                 await processAiResponse(data.resposta);
             } else {
+                hideTyping();
                 addMessage("❌ Erro ao comunicar com o servidor.", false);
             }
         } catch (error) {
