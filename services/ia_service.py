@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from datetime import datetime
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq # Importe o Groq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -8,9 +9,9 @@ from dotenv import load_dotenv
 
 # Importa nossa coleção de sessões do MongoDB
 from core.database import sessions_collection 
-# Importa os dados da clínica para o prompt
-from core.config_clinica import DADOS_DA_CLINICA
-
+# Importa os dados da clínica e o prompt
+from core.config_clinica import esta_em_horario_comercial
+from core.prompts import PROMPT_SISTEMA
 load_dotenv()
 
 def get_model():
@@ -35,40 +36,6 @@ def get_model():
 # Agora o seu llm é dinâmico!
 llm = get_model()
 
-# --- PROMPT PRINCIPAL ---
-PROMPT_SISTEMA = """Você é a assistente virtual inteligente da Clínica AgentOS.
-Sua missão é realizar a triagem inicial dos pacientes de forma humanizada, simpática e CONCISA.
-
-""" + DADOS_DA_CLINICA + """
-
-REGRAS DE TOM DE VOZ E ESTILO (OBRIGATÓRIAS):
-1. Seja calorosa e educada, mas evite ser excessivamente formal ou robótica.
-2. Respostas curtas e naturais, ideais para leitura rápida no WhatsApp (1 a 2 frases curtas no máximo por balão).
-3. Evite encerramentos prolixos (ex: "Ficaremos felizes em ajudar"). Termine a mensagem fazendo a pergunta necessária para o andamento da triagem.
-
-REGRAS DE ATENDIMENTO (OBRIGATÓRIAS):
-1. NUNCA invente informações. Baseie-se APENAS nas INFORMAÇÕES OFICIAIS acima.
-2. Se o paciente pedir uma especialidade que não temos, diga educadamente que no momento só atendemos Cardiologia e Clínica Geral, e pergunte se ele deseja seguir com um desses.
-3. Se o paciente tentar agendar para o fim de semana, informe amigavelmente nosso horário de funcionamento.
-4. Se o convênio do paciente não for aceito, informe PRIMEIRO os convênios que a clínica aceita (Unimed, Bradesco, SulAmérica) e, SÓ ENTÃO, ofereça gentilmente a consulta particular por R$ 350,00 como alternativa.
-
-REGRAS DE EXTRAÇÃO E SAÍDA JSON (MUITO IMPORTANTE):
-Você está se comunicando com um sistema de backend.
-Sua resposta DEVE SER EXCLUSIVAMENTE um objeto JSON válido.
-Comece diretamente com {{ e termine com }}.
-
-{{
-  "resposta_para_paciente": "Texto amigável com separador | para balões.",
-  "dados_extraidos": {{
-    "nome": "string ou null",
-    "motivo": "string ou null",
-    "convenio": "string ou null"
-  }},
-  "necessita_humano": false 
-}}
-
-ATENÇÃO: Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente, humano, recepcionista, ou relatar uma emergência médica grave.
-"""
 
 async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: str) -> str:
     # 1. Busca a sessão no banco
@@ -103,8 +70,12 @@ async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: 
         })
  
     # 2. Criamos o Prompt de Sistema DINÂMICO
+    prompt_conteudo = PROMPT_SISTEMA
+    if "{telefone_paciente}" in prompt_conteudo:
+        prompt_conteudo = prompt_conteudo.replace("{telefone_paciente}", telefone_paciente)
+
     prompt_personalizado = SystemMessage(
-        content=PROMPT_SISTEMA.format(telefone_paciente=telefone_paciente)
+        content=prompt_conteudo
     )
 
     # 3. Monta a lista de mensagens para o Gemini
@@ -140,12 +111,24 @@ async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: 
             necessita_humano = parsed_response.get("necessita_humano", False)
             
             if necessita_humano:
-                print(f"🚨 [Transbordo Automático] IA solicitou humano para o paciente {telefone_paciente}.")
-                # Muda o dono da sessão para humano automaticamente!
-                await sessions_collection.update_one(
-                    {"telefone": telefone_paciente},
-                    {"$set": {"owner": "human"}}
-                )
+                if esta_em_horario_comercial():
+                    print(f"🚨 [Transbordo] Transferindo {telefone_paciente} para humano.")
+                    await sessions_collection.update_one(
+                        {"telefone": telefone_paciente},
+                        {"$set": {
+                            "owner": "human",
+                            "human_takeover_at": datetime.utcnow(),
+                            "last_human_activity_at": datetime.utcnow()
+                        }}
+                    )
+                else:
+                    print(f"🕐 [Transbordo] Fora do horário. {telefone_paciente} ficará com o bot.")
+                    texto_resposta = (
+                        "Nossos atendentes estão disponíveis de segunda a sexta, "
+                        "das 08h às 18h. Posso anotar seu contato para que a equipe "
+                        "retorne no próximo horário comercial. Enquanto isso, posso "
+                        "continuar te ajudando por aqui! 😊"
+                    )
             
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
             print(f"⚠️ Erro crítico ao decodificar JSON: {e}. Conteúdo: {conteudo_bruto}")

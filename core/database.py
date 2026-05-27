@@ -6,8 +6,9 @@ load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
 
-# Instancia o cliente global
-client = AsyncIOMotorClient(MONGO_URI)
+import certifi
+
+client = AsyncIOMotorClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=True)
 
 # Define o nome do seu banco de dados e a coleção (tabela)
 db = client["agentos_db"]

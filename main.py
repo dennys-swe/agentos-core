@@ -1,19 +1,31 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from controllers import webhook
+from controllers import atendimento
 from services.ia_service import processar_mensagem_com_memoria
+from services.auto_return_service import iniciar_verificacao_inatividade
 from core.database import sessions_collection
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Executado na inicialização
+    asyncio.create_task(iniciar_verificacao_inatividade())
+    yield
 
 app = FastAPI(
     title="AgentOS API",
     description="Motor central para orquestração de agentes de IA na saúde.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Registra o router do webhook e define que o caminho base será /webhook
 app.include_router(webhook.router, prefix="/webhook", tags=["WhatsApp Webhook"])
+app.include_router(atendimento.router, prefix="", tags=["Atendimento Humano"])
 
 @app.get("/")
 async def root():
@@ -63,3 +75,10 @@ async def admin_interface():
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "admin.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
+
+@app.get("/atendimento", response_class=HTMLResponse, tags=["Atendimento Humano"])
+async def atendimento_interface():
+    html_path = os.path.join(os.path.dirname(__file__), "frontend", "atendimento.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return f.read()
+
