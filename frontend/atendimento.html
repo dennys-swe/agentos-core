@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentOS - Painel de Atendimento</title>
+    <meta name="description" content="Painel de atendimento humano do AgentOS para gestão de conversas transferidas do bot de IA.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { inter: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+
+        /* ── Animations ── */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%      { transform: scale(1.6); opacity: 0.5; }
+        }
+        @keyframes shimmer {
+            0%   { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-16px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to   { opacity: 0; transform: translateY(-16px) scale(0.95); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-fade-in-up   { animation: fadeInUp 0.35s ease-out both; }
+        .animate-fade-in       { animation: fadeIn 0.3s ease-out both; }
+        .animate-slide-right   { animation: slideInRight 0.3s ease-out both; }
+        .animate-slide-left    { animation: slideInLeft 0.3s ease-out both; }
+        .animate-pulse-dot     { animation: pulse-dot 1.8s ease-in-out infinite; }
+        .animate-toast-in      { animation: toastIn 0.3s ease-out both; }
+        .animate-toast-out     { animation: toastOut 0.25s ease-in both; }
+        .animate-spin          { animation: spin 0.7s linear infinite; }
+
+        /* ── Skeleton loader ── */
+        .skeleton {
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+        .skeleton-dark {
+            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+
+        /* ── Custom scrollbar ── */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* ── Chat bubble tails (CSS triangles) ── */
+        .bubble-user::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 0;
+            width: 0; height: 0;
+            border-left: 6px solid #d1fae5;
+            border-top: 6px solid #d1fae5;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        .bubble-assistant::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 0; height: 0;
+            border-right: 6px solid #ffffff;
+            border-top: 6px solid #ffffff;
+            border-left: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+
+        /* ── Chat area background pattern ── */
+        .chat-bg {
+            background-color: #eef2f7;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23cbd5e1' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        /* ── Conversation item transition ── */
+        .conv-item {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* ── Textarea resize ── */
+        #message-input {
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        /* ── Toast container ── */
+        #toast-container {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        #toast-container > div {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-inter text-gray-800 flex flex-col">
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+    <!-- ╔══════════════════════════════════════╗
+         ║           NAVBAR                     ║
+         ╚══════════════════════════════════════╝ -->
+    <nav class="bg-gradient-to-r from-teal-600 to-teal-700 text-white shadow-lg flex-shrink-0 relative z-30">
+        <div class="max-w-full mx-auto px-4 py-2.5 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <a href="admin.html" class="text-white/70 hover:text-white transition-colors text-sm flex items-center gap-1" title="Voltar ao Admin">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Admin
+                </a>
+                <div class="w-px h-5 bg-teal-400/40"></div>
+                <div class="font-semibold text-lg flex items-center gap-2">
+                    <span class="text-xl">💬</span>
+                    Painel de Atendimento
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="badge-count" class="hidden bg-red-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-lg shadow-red-500/30 animate-fade-in">
+                    0 pendentes
+                </span>
+                <span class="text-xs bg-teal-800/50 px-3 py-1 rounded-full border border-teal-500/30 backdrop-blur-sm">
+                    🟢 Conectado
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ╔══════════════════════════════════════╗
+         ║           MAIN CONTENT               ║
+         ╚══════════════════════════════════════╝ -->
+    <div class="flex-1 flex overflow-hidden relative" id="main-container">
+
+        <!-- ── Sidebar ── -->
+        <aside id="sidebar" class="w-full md:w-80 lg:w-96 bg-slate-800 flex flex-col flex-shrink-0 border-r border-slate-700/50 z-20">
+            <!-- Sidebar header -->
+            <div class="px-4 py-3 border-b border-slate-700/50 flex-shrink-0">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input id="search-input" type="text" placeholder="Buscar conversa..." class="w-full bg-slate-700/60 text-slate-200 placeholder-slate-400 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 border border-slate-600/50 transition-all">
+                </div>
+            </div>
+
+            <!-- Conversations list -->
+            <div id="conversations-list" class="flex-1 overflow-y-auto custom-scrollbar custom-scrollbar-dark">
+                <!-- Skeleton loading -->
+                <div id="sidebar-skeleton" class="p-3 space-y-2">
+                    <div class="p-3 rounded-lg"><div class="skeleton-dark h-4 w-3/4 mb-2"></div><div class="skeleton-dark h-3 w-1/2"></div></div>
+                    <div class="p-3 rounded-lg"><div class="skeleton-dark h-4 w-2/3 mb-2"></div><div class="skeleton-dark h-3 w-2/5"></div></div>
+                    <div class="p-3 rounded-lg"><div class="skeleton-dark h-4 w-4/5 mb-2"></div><div class="skeleton-dark h-3 w-1/3"></div></div>
+                    <div class="p-3 rounded-lg"><div class="skeleton-dark h-4 w-1/2 mb-2"></div><div class="skeleton-dark h-3 w-2/5"></div></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ── Chat Area ── -->
+        <main id="chat-area" class="hidden md:flex flex-1 flex-col bg-white relative z-10">
+            <!-- Empty state (default) -->
+            <div id="empty-state" class="flex-1 flex items-center justify-center">
+                <div class="text-center animate-fade-in">
+                    <div class="text-7xl mb-4 opacity-30">💬</div>
+                    <p class="text-slate-400 text-lg font-light">Selecione uma conversa para começar o atendimento</p>
+                </div>
+            </div>
+
+            <!-- Conversation view (hidden by default) -->
+            <div id="conversation-view" class="hidden flex-1 flex flex-col">
+                <!-- Chat header -->
+                <div id="chat-header" class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
+                    <!-- Back button (mobile only) -->
+                    <button id="btn-back" class="md:hidden mr-1 p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onclick="goBackToList()">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-md shadow-teal-500/20 flex-shrink-0">
+                        <span id="header-avatar">?</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h2 id="header-name" class="font-semibold text-gray-900 truncate text-sm"></h2>
+                        <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+                            <span id="header-phone" class="flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                            </span>
+                            <span class="text-gray-300">•</span>
+                            <span id="header-motivo" class="truncate"></span>
+                            <span class="text-gray-300">•</span>
+                            <span id="header-convenio" class="truncate"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <div id="header-timer" class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium whitespace-nowrap"></div>
+                        <button id="btn-devolver" onclick="devolverParaIA()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg font-medium transition-all hover:shadow-sm whitespace-nowrap">
+                            🤖 Devolver para IA
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat messages -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar chat-bg px-4 py-4">
+                    <!-- Messages will be injected here -->
+                    <div id="chat-skeleton" class="space-y-4 p-4">
+                        <div class="flex justify-start"><div class="skeleton w-48 h-10"></div></div>
+                        <div class="flex justify-end"><div class="skeleton w-56 h-10"></div></div>
+                        <div class="flex justify-start"><div class="skeleton w-40 h-10"></div></div>
+                        <div class="flex justify-end"><div class="skeleton w-64 h-14"></div></div>
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
+                    <div class="flex items-end gap-2">
+                        <textarea
+                            id="message-input"
+                            placeholder="Digite sua mensagem..."
+                            rows="1"
+                            class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400 transition-all placeholder-gray-400"
+                            onkeydown="handleKeyDown(event)"
+                            oninput="autoResizeTextarea(this)"
+                        ></textarea>
+                        <button id="btn-send" onclick="sendMessage()" class="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-xl px-4 py-2.5 font-medium text-sm transition-all shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95" disabled>
+                            <span id="send-text">Enviar</span>
+                            <svg id="send-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            <svg id="send-spinner" class="w-4 h-4 animate-spin hidden" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ╔══════════════════════════════════════╗
+         ║           STATUS BAR                 ║
+         ╚══════════════════════════════════════╝ -->
+    <footer class="bg-slate-800 text-slate-400 text-xs py-1.5 px-4 flex justify-between items-center flex-shrink-0 border-t border-slate-700/50 z-30">
+        <div class="flex items-center gap-2">
+            <div id="polling-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 transition-colors"></div>
+            <span id="status-text">Conectando...</span>
+        </div>
+        <span id="last-refresh">—</span>
+    </footer>
+
+    <!-- ╔══════════════════════════════════════╗
+         ║           JAVASCRIPT                 ║
+         ╚══════════════════════════════════════╝ -->
+    <script>
+    (function () {
+        'use strict';
+
+        // ── State ──
+        let conversations = [];
+        let filteredConversations = [];
+        let selectedPhone = null;
+        let chatHistory = [];
+        let previousCount = -1;
+        let isSending = false;
+        let isFirstLoad = true;
+        let pollTimerList = null;
+        let pollTimerChat = null;
+        let isMobileView = window.innerWidth < 768;
+        let showingChat = false;
+
+        // ── DOM refs ──
+        const sidebar = document.getElementById('sidebar');
+        const chatArea = document.getElementById('chat-area');
+        const convList = document.getElementById('conversations-list');
+        const sidebarSkeleton = document.getElementById('sidebar-skeleton');
+        const emptyState = document.getElementById('empty-state');
+        const conversationView = document.getElementById('conversation-view');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatSkeleton = document.getElementById('chat-skeleton');
+        const messageInput = document.getElementById('message-input');
+        const btnSend = document.getElementById('btn-send');
+        const sendText = document.getElementById('send-text');
+        const sendIcon = document.getElementById('send-icon');
+        const sendSpinner = document.getElementById('send-spinner');
+        const badgeCount = document.getElementById('badge-count');
+        const searchInput = document.getElementById('search-input');
+        const statusText = document.getElementById('status-text');
+        const lastRefresh = document.getElementById('last-refresh');
+        const pollingDot = document.getElementById('polling-dot');
+
+        // ── Sound ──
+        function playNotificationSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                oscillator.frequency.value = 830;
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3;
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + 0.15);
+            } catch (e) { /* ignore audio errors */ }
+        }
+
+        // ── Toast ──
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                error: 'bg-red-500 text-white',
+                success: 'bg-emerald-500 text-white',
+                info: 'bg-slate-700 text-white'
+            };
+            const icons = {
+                error: '❌',
+                success: '✅',
+                info: 'ℹ️'
+            };
+            const toast = document.createElement('div');
+            toast.className = `${colors[type]} px-4 py-2.5 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2 animate-toast-in`;
+            toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('animate-toast-in');
+                toast.classList.add('animate-toast-out');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, 3500);
+        }
+
+        // ── Time helpers ──
+        function timeSince(dateStr) {
+            if (!dateStr) return '—';
+            const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+            if (diff < 60) return 'agora';
+            if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
+            if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
+            return `há ${Math.floor(diff / 86400)} d`;
+        }
+
+        function autoReturnTimer(conv) {
+            const ref = conv.last_human_activity_at || conv.human_takeover_at;
+            if (!ref) return '';
+            const elapsed = (Date.now() - new Date(ref).getTime()) / 1000 / 60; // minutes
+            const remaining = Math.max(0, 15 - elapsed);
+            if (remaining <= 0) return '⏰ Auto-retorno iminente';
+            return `⏰ Auto-retorno em ~${Math.ceil(remaining)}min`;
+        }
+
+        // ── API ──
+        async function fetchConversations() {
+            const res = await fetch('/api/admin/atendimentos');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        async function fetchHistory(telefone) {
+            const res = await fetch(`/api/admin/atendimentos/${encodeURIComponent(telefone)}/historico`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return data.historico || [];
+        }
+
+        async function sendReply(telefone, mensagem) {
+            const res = await fetch(`/api/admin/atendimentos/${encodeURIComponent(telefone)}/responder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mensagem })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        async function devolverAPI(telefone) {
+            const res = await fetch(`/api/admin/atendimentos/${encodeURIComponent(telefone)}/devolver`, {
+                method: 'POST'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        // ── Render sidebar ──
+        function renderSidebar() {
+            const query = searchInput.value.toLowerCase().trim();
+            filteredConversations = conversations.filter(c => {
+                const name = (c.nome || c.telefone || '').toLowerCase();
+                const motivo = (c.motivo || '').toLowerCase();
+                return name.includes(query) || motivo.includes(query);
+            });
+
+            // Sort by most recent
+            filteredConversations.sort((a, b) => {
+                const ta = new Date(a.human_takeover_at || 0).getTime();
+                const tb = new Date(b.human_takeover_at || 0).getTime();
+                return tb - ta;
+            });
+
+            sidebarSkeleton.classList.add('hidden');
+
+            if (filteredConversations.length === 0 && conversations.length === 0) {
+                convList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
+                        <div class="text-5xl mb-3">🎉</div>
+                        <p class="text-slate-400 font-medium">Nenhum atendimento pendente</p>
+                        <p class="text-slate-500 text-xs mt-1">Você está em dia!</p>
+                    </div>`;
+                return;
+            }
+
+            if (filteredConversations.length === 0) {
+                convList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-center p-6 animate-fade-in">
+                        <div class="text-3xl mb-2 opacity-40">🔍</div>
+                        <p class="text-slate-400 text-sm">Nenhum resultado encontrado</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '<div class="p-2 space-y-0.5">';
+            filteredConversations.forEach((c, i) => {
+                const isSelected = c.telefone === selectedPhone;
+                const displayName = c.nome || c.telefone;
+                const initial = (displayName || '?')[0].toUpperCase();
+                const timeAgo = timeSince(c.human_takeover_at);
+                const timerText = autoReturnTimer(c);
+
+                html += `
+                <button
+                    onclick="window.__selectConversation('${c.telefone}')"
+                    class="conv-item w-full text-left p-3 rounded-xl flex items-center gap-3 group
+                        ${isSelected
+                            ? 'bg-teal-600/20 border border-teal-500/30'
+                            : 'hover:bg-slate-700/60 border border-transparent'
+                        }"
+                    style="animation-delay: ${i * 40}ms"
+                >
+                    <div class="relative flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br ${isSelected ? 'from-teal-400 to-teal-600' : 'from-slate-500 to-slate-600'} flex items-center justify-center text-white font-semibold text-sm shadow-md transition-colors">
+                            ${initial}
+                        </div>
+                        ${c.status === 'aguardando_resposta' ? '<div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-800 animate-pulse-dot"></div>' : ''}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-medium text-sm ${isSelected ? 'text-teal-200' : 'text-slate-200'} truncate">${displayName}</span>
+                            <span class="text-[10px] ${isSelected ? 'text-teal-300/70' : 'text-slate-500'} whitespace-nowrap">${timeAgo}</span>
+                        </div>
+                        <p class="text-xs ${isSelected ? 'text-teal-300/60' : 'text-slate-400'} truncate mt-0.5">${c.motivo || 'Sem motivo informado'}</p>
+                        ${timerText ? `<p class="text-[10px] text-amber-400/70 mt-0.5">${timerText}</p>` : ''}
+                    </div>
+                </button>`;
+            });
+            html += '</div>';
+            convList.innerHTML = html;
+
+            // Badge
+            if (conversations.length > 0) {
+                badgeCount.textContent = `${conversations.length} pendente${conversations.length > 1 ? 's' : ''}`;
+                badgeCount.classList.remove('hidden');
+            } else {
+                badgeCount.classList.add('hidden');
+            }
+        }
+
+        // ── Render chat ──
+        function renderChat(history, animate = false) {
+            if (!history || history.length === 0) {
+                chatMessages.innerHTML = `
+                    <div class="flex items-center justify-center h-full animate-fade-in">
+                        <p class="text-slate-400 text-sm italic">Nenhuma mensagem no histórico</p>
+                    </div>`;
+                return;
+            }
+
+            chatSkeleton.classList.add('hidden');
+
+            let html = '';
+            history.forEach((msg, i) => {
+                const isUser = msg.role === 'user';
+                const animClass = animate && i >= history.length - 3
+                    ? (isUser ? 'animate-slide-right' : 'animate-slide-left')
+                    : '';
+
+                html += `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} mb-2 ${animClass}">
+                    <div class="relative max-w-[75%] lg:max-w-[60%] px-3.5 py-2 rounded-xl text-sm shadow-sm
+                        ${isUser
+                            ? 'bg-emerald-100 border border-emerald-200/80 text-gray-800 bubble-user rounded-tr-sm'
+                            : 'bg-white border border-gray-200 text-gray-700 bubble-assistant rounded-tl-sm'
+                        }">
+                        <div class="whitespace-pre-wrap break-words leading-relaxed">${escapeHtml(msg.content)}</div>
+                    </div>
+                </div>`;
+            });
+
+            chatMessages.innerHTML = html;
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ── Update chat header ──
+        function updateChatHeader(conv) {
+            if (!conv) return;
+            const displayName = conv.nome || conv.telefone;
+            document.getElementById('header-avatar').textContent = (displayName || '?')[0].toUpperCase();
+            document.getElementById('header-name').textContent = displayName;
+            document.getElementById('header-phone').innerHTML = `
+                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                ${conv.telefone}`;
+            document.getElementById('header-motivo').textContent = conv.motivo || '—';
+            document.getElementById('header-convenio').textContent = conv.convenio || '—';
+            document.getElementById('header-timer').textContent = autoReturnTimer(conv);
+        }
+
+        // ── Select conversation ──
+        window.__selectConversation = async function (telefone) {
+            selectedPhone = telefone;
+            renderSidebar();
+
+            // Show chat area (especially on mobile)
+            if (isMobileView) {
+                sidebar.classList.add('hidden');
+                chatArea.classList.remove('hidden');
+                chatArea.classList.add('flex');
+                showingChat = true;
+            }
+
+            emptyState.classList.add('hidden');
+            conversationView.classList.remove('hidden');
+            conversationView.classList.add('flex');
+            chatSkeleton.classList.remove('hidden');
+            chatMessages.innerHTML = '';
+            chatMessages.appendChild(chatSkeleton);
+
+            const conv = conversations.find(c => c.telefone === telefone);
+            updateChatHeader(conv);
+
+            // Enable input
+            messageInput.disabled = false;
+            messageInput.focus();
+            updateSendButton();
+
+            try {
+                chatHistory = await fetchHistory(telefone);
+                renderChat(chatHistory, true);
+            } catch (err) {
+                showToast('Erro ao carregar histórico', 'error');
+                chatMessages.innerHTML = `<div class="flex items-center justify-center h-full"><p class="text-red-400 text-sm">Erro ao carregar histórico</p></div>`;
+            }
+        };
+
+        // ── Go back to list (mobile) ──
+        window.goBackToList = function () {
+            showingChat = false;
+            selectedPhone = null;
+            sidebar.classList.remove('hidden');
+            chatArea.classList.add('hidden');
+            chatArea.classList.remove('flex');
+            renderSidebar();
+        };
+
+        // ── Send message ──
+        window.sendMessage = async function () {
+            const text = messageInput.value.trim();
+            if (!text || !selectedPhone || isSending) return;
+
+            isSending = true;
+            setSendingState(true);
+
+            // Optimistic UI
+            chatHistory.push({ role: 'assistant', content: text });
+            renderChat(chatHistory, true);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            updateSendButton();
+
+            try {
+                await sendReply(selectedPhone, text);
+                showToast('Mensagem enviada', 'success');
+            } catch (err) {
+                showToast('Erro ao enviar mensagem', 'error');
+                // Revert optimistic
+                chatHistory.pop();
+                renderChat(chatHistory, false);
+            } finally {
+                isSending = false;
+                setSendingState(false);
+            }
+        };
+
+        function setSendingState(sending) {
+            if (sending) {
+                sendIcon.classList.add('hidden');
+                sendSpinner.classList.remove('hidden');
+                sendText.textContent = 'Enviando';
+                btnSend.disabled = true;
+            } else {
+                sendIcon.classList.remove('hidden');
+                sendSpinner.classList.add('hidden');
+                sendText.textContent = 'Enviar';
+                updateSendButton();
+            }
+        }
+
+        function updateSendButton() {
+            const hasText = messageInput.value.trim().length > 0;
+            btnSend.disabled = !hasText || isSending || !selectedPhone;
+        }
+
+        // ── Devolver para IA ──
+        window.devolverParaIA = async function () {
+            if (!selectedPhone) return;
+            const conv = conversations.find(c => c.telefone === selectedPhone);
+            const displayName = conv?.nome || selectedPhone;
+            if (!confirm(`Deseja devolver o atendimento de "${displayName}" para a IA?`)) return;
+
+            try {
+                await devolverAPI(selectedPhone);
+                showToast('Atendimento devolvido para a IA', 'success');
+                selectedPhone = null;
+                emptyState.classList.remove('hidden');
+                conversationView.classList.add('hidden');
+                conversationView.classList.remove('flex');
+                if (isMobileView) goBackToList();
+                await pollConversations();
+            } catch (err) {
+                showToast('Erro ao devolver para IA', 'error');
+            }
+        };
+
+        // ── Keyboard handling ──
+        window.handleKeyDown = function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        };
+
+        window.autoResizeTextarea = function (el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+            updateSendButton();
+        };
+
+        // ── Search ──
+        searchInput.addEventListener('input', () => {
+            renderSidebar();
+        });
+
+        // ── Polling ──
+        async function pollConversations() {
+            try {
+                pollingDot.classList.remove('bg-emerald-400');
+                pollingDot.classList.add('bg-amber-400');
+
+                const data = await fetchConversations();
+                conversations = data;
+
+                // Detect new arrivals
+                if (previousCount >= 0 && data.length > previousCount) {
+                    playNotificationSound();
+                    showToast(`Nova conversa recebida! (${data.length - previousCount})`, 'info');
+                }
+                previousCount = data.length;
+
+                renderSidebar();
+
+                // Update header if selected
+                if (selectedPhone) {
+                    const conv = conversations.find(c => c.telefone === selectedPhone);
+                    if (conv) {
+                        updateChatHeader(conv);
+                    } else {
+                        // Selected conversation was resolved
+                        selectedPhone = null;
+                        emptyState.classList.remove('hidden');
+                        conversationView.classList.add('hidden');
+                        conversationView.classList.remove('flex');
+                        if (isMobileView) goBackToList();
+                    }
+                }
+
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    sidebarSkeleton.classList.add('hidden');
+                }
+
+                pollingDot.classList.remove('bg-amber-400');
+                pollingDot.classList.add('bg-emerald-400');
+                statusText.textContent = `Polling ativo • ${conversations.length} atendimento${conversations.length !== 1 ? 's' : ''}`;
+                lastRefresh.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+            } catch (err) {
+                pollingDot.classList.remove('bg-amber-400', 'bg-emerald-400');
+                pollingDot.classList.add('bg-red-400');
+                statusText.textContent = 'Erro na conexão';
+                if (isFirstLoad) {
+                    sidebarSkeleton.classList.add('hidden');
+                    convList.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-center p-6 animate-fade-in">
+                            <div class="text-4xl mb-3 opacity-40">⚠️</div>
+                            <p class="text-slate-400 font-medium text-sm">Erro ao conectar ao servidor</p>
+                            <p class="text-slate-500 text-xs mt-1">Tentando reconectar...</p>
+                        </div>`;
+                    isFirstLoad = false;
+                }
+            }
+        }
+
+        async function pollChat() {
+            if (!selectedPhone) return;
+            try {
+                const history = await fetchHistory(selectedPhone);
+                // Only re-render if there are new messages
+                if (history.length !== chatHistory.length) {
+                    chatHistory = history;
+                    renderChat(chatHistory, true);
+                }
+            } catch (err) {
+                // Silent fail on chat poll
+            }
+        }
+
+        // ── Responsive handler ──
+        function handleResize() {
+            const wasMobile = isMobileView;
+            isMobileView = window.innerWidth < 768;
+
+            if (isMobileView && !wasMobile) {
+                // Switching to mobile
+                if (showingChat && selectedPhone) {
+                    sidebar.classList.add('hidden');
+                    chatArea.classList.remove('hidden');
+                    chatArea.classList.add('flex');
+                } else {
+                    sidebar.classList.remove('hidden');
+                    chatArea.classList.add('hidden');
+                    chatArea.classList.remove('flex');
+                }
+            } else if (!isMobileView && wasMobile) {
+                // Switching to desktop
+                sidebar.classList.remove('hidden');
+                chatArea.classList.remove('hidden');
+                chatArea.classList.add('flex');
+                showingChat = false;
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+
+        // ── Input listener for send button state ──
+        messageInput.addEventListener('input', updateSendButton);
+
+        // ── Init ──
+        (async function init() {
+            await pollConversations();
+            pollTimerList = setInterval(pollConversations, 5000);
+            pollTimerChat = setInterval(pollChat, 5000);
+        })();
+
+    })();
+    </script>
+</body>
+</html>
