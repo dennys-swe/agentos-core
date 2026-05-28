@@ -13,5 +13,6 @@ client = AsyncIOMotorClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=Tru
 # Define o nome do seu banco de dados e a coleção (tabela)
 db = client["agentos_db"]
 sessions_collection = db["sessions"]
+users_collection = db["users"]
 
 print("🔌 Conexão com o banco de dados 'agentos_db' instanciada.")

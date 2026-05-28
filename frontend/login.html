@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AgentOS - Motor de Agentes de IA para Clínicas. Acesse o painel administrativo." />
+  <title>AgentOS - Login</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Google Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Fade-in animation for the card */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .animate-fade-in-up {
+      animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Shake animation for error */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 50%, 90% { transform: translateX(-6px); }
+      30%, 70% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    /* Spinner */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* Subtle floating glow */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.7; }
+    }
+    .animate-pulse-glow {
+      animation: pulse-glow 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="font-inter min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
+
+  <!-- Background decorative elements -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <!-- Top-right glow -->
+    <div class="absolute -top-32 -right-32 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse-glow"></div>
+    <!-- Bottom-left glow -->
+    <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-teal-600/8 rounded-full blur-3xl animate-pulse-glow" style="animation-delay: 2s;"></div>
+    <!-- Grid pattern -->
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px); background-size: 32px 32px;"></div>
+  </div>
+
+  <!-- Login Card -->
+  <main class="relative z-10 w-full max-w-md px-4 animate-fade-in-up" style="opacity: 0;">
+    <div id="login-card" class="backdrop-blur-xl bg-white/[0.07] border border-white/[0.12] rounded-2xl shadow-2xl shadow-black/30 p-8 sm:p-10">
+
+      <!-- Logo / Brand -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400/20 to-teal-600/20 border border-teal-400/20 mb-4">
+          <span class="text-3xl" role="img" aria-label="AgentOS Robot">🤖</span>
+        </div>
+        <h1 class="text-3xl font-bold">
+          <span class="bg-gradient-to-r from-teal-300 via-teal-400 to-teal-500 bg-clip-text text-transparent">AgentOS</span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-1.5 tracking-wide">Painel Administrativo</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="space-y-5" novalidate>
+
+        <!-- Username Field -->
+        <div class="space-y-1.5">
+          <label for="username" class="block text-sm font-medium text-slate-300">Usuário</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              autocomplete="username"
+              required
+              placeholder="Seu nome de usuário"
+              class="block w-full pl-11 pr-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-slate-500 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400/40
+                     transition-all duration-200 hover:bg-white/[0.08] hover:border-white/[0.15]"
+            />
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="space-y-1.5">
+          <label for="password" class="block text-sm font-medium text-slate-300">Senha</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+            </div>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              required
+              placeholder="Sua senha"
+              class="block w-full pl-11 pr-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-slate-500 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400/40
+                     transition-all duration-200 hover:bg-white/[0.08] hover:border-white/[0.15]"
+            />
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden items-center gap-2.5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm" role="alert">
+          <span class="text-base flex-shrink-0">❌</span>
+          <span id="error-text">Usuário ou senha inválidos.</span>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          id="login-button"
+          class="relative w-full py-3 px-4 rounded-xl text-sm font-semibold text-white
+                 bg-gradient-to-r from-teal-500 to-teal-600
+                 hover:from-teal-400 hover:to-teal-500
+                 focus:outline-none focus:ring-2 focus:ring-teal-400/50 focus:ring-offset-2 focus:ring-offset-slate-900
+                 transition-all duration-200
+                 shadow-lg shadow-teal-500/20 hover:shadow-teal-400/30
+                 active:scale-[0.98]
+                 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:from-teal-500 disabled:hover:to-teal-600 disabled:active:scale-100"
+        >
+          <span id="button-text" class="inline-flex items-center gap-2">
+            Entrar
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </span>
+          <span id="button-loading" class="hidden inline-flex items-center gap-2">
+            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Entrando...
+          </span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-slate-500/70 text-xs mt-6 tracking-wide">
+      Motor de Agentes de IA para Clínicas
+    </p>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var form = document.getElementById('login-form');
+      var card = document.getElementById('login-card');
+      var errorBox = document.getElementById('error-message');
+      var errorText = document.getElementById('error-text');
+      var buttonText = document.getElementById('button-text');
+      var buttonLoading = document.getElementById('button-loading');
+      var loginButton = document.getElementById('login-button');
+      var usernameInput = document.getElementById('username');
+      var passwordInput = document.getElementById('password');
+
+      function setLoading(isLoading) {
+        loginButton.disabled = isLoading;
+        if (isLoading) {
+          buttonText.classList.add('hidden');
+          buttonLoading.classList.remove('hidden');
+          buttonLoading.classList.add('inline-flex');
+        } else {
+          buttonText.classList.remove('hidden');
+          buttonLoading.classList.add('hidden');
+          buttonLoading.classList.remove('inline-flex');
+        }
+      }
+
+      function showError(message) {
+        errorText.textContent = message;
+        errorBox.classList.remove('hidden');
+        errorBox.classList.add('flex');
+
+        // Trigger shake animation
+        card.classList.remove('animate-shake');
+        // Force reflow to restart animation
+        void card.offsetWidth;
+        card.classList.add('animate-shake');
+      }
+
+      function hideError() {
+        errorBox.classList.add('hidden');
+        errorBox.classList.remove('flex');
+        card.classList.remove('animate-shake');
+      }
+
+      // Hide error when user starts typing
+      usernameInput.addEventListener('input', hideError);
+      passwordInput.addEventListener('input', hideError);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideError();
+
+        var username = usernameInput.value.trim();
+        var password = passwordInput.value;
+
+        if (!username || !password) {
+          showError('Preencha todos os campos.');
+          return;
+        }
+
+        setLoading(true);
+
+        fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            username: username,
+            password: password,
+          }),
+        })
+          .then(function (response) {
+            if (response.ok) {
+              // Success — redirect to admin panel
+              window.location.href = '/admin';
+            } else if (response.status === 401) {
+              setLoading(false);
+              showError('Usuário ou senha inválidos.');
+            } else {
+              setLoading(false);
+              showError('Erro no servidor. Tente novamente.');
+            }
+          })
+          .catch(function () {
+            setLoading(false);
+            showError('Erro de conexão. Verifique sua rede.');
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -49,7 +49,11 @@ async def processar_mensagem_com_memoria(telefone_paciente: str, texto_usuario: 
         novo_historico = sessao.get("historico", []) + [{"role": "user", "content": texto_usuario}]
         await sessions_collection.update_one(
             {"telefone": telefone_paciente},
-            {"$set": {"historico": novo_historico}}
+            {"$set": {
+                "historico": novo_historico,
+                "last_patient_activity_at": datetime.utcnow(),
+                "inactivity_warning_sent": False
+            }}
         )
         return "_SILENCE_" 
     # --------------------------------------------------

@@ -1,10 +1,11 @@
 import httpx
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from core.database import sessions_collection
 from services.whatsapp_service import formatar_numero_br, ACCESS_TOKEN, PHONE_ID, URL
+from services.auth_service import get_current_user
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ class RespostaHumana(BaseModel):
 
 # --- GET: Lista todos os atendimentos humanos ativos ---
 @router.get("/api/admin/atendimentos", tags=["Atendimento Humano"])
-async def listar_atendimentos():
+async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
     """Retorna todas as sessões que estão sob controle de um atendente humano."""
     atendimentos = []
     cursor = sessions_collection.find({"owner": "human"}).sort("human_takeover_at", -1)
@@ -37,7 +38,7 @@ async def listar_atendimentos():
 
 # --- GET: Histórico completo de uma conversa ---
 @router.get("/api/admin/atendimentos/{telefone}/historico", tags=["Atendimento Humano"])
-async def obter_historico(telefone: str):
+async def obter_historico(telefone: str, current_user: dict = Depends(get_current_user)):
     """Retorna o histórico completo de mensagens de uma sessão."""
     sessao = await sessions_collection.find_one({"telefone": telefone})
 
@@ -49,7 +50,7 @@ async def obter_historico(telefone: str):
 
 # --- POST: Envia resposta humana via WhatsApp ---
 @router.post("/api/admin/atendimentos/{telefone}/responder", tags=["Atendimento Humano"])
-async def responder_paciente(telefone: str, request: RespostaHumana):
+async def responder_paciente(telefone: str, request: RespostaHumana, current_user: dict = Depends(get_current_user)):
     """Envia uma mensagem do atendente para o paciente via WhatsApp e salva no histórico."""
     sessao = await sessions_collection.find_one({"telefone": telefone})
 
@@ -64,7 +65,8 @@ async def responder_paciente(telefone: str, request: RespostaHumana):
         {"telefone": telefone},
         {"$set": {
             "historico": historico,
-            "last_human_activity_at": datetime.utcnow()
+            "last_human_activity_at": datetime.utcnow(),
+            "inactivity_warning_sent": False
         }}
     )
 
@@ -98,7 +100,7 @@ async def responder_paciente(telefone: str, request: RespostaHumana):
 
 # --- POST: Devolve a sessão para o bot ---
 @router.post("/api/admin/atendimentos/{telefone}/devolver", tags=["Atendimento Humano"])
-async def devolver_ao_bot(telefone: str):
+async def devolver_ao_bot(telefone: str, current_user: dict = Depends(get_current_user)):
     """Devolve o controle da conversa para o bot de IA."""
     sessao = await sessions_collection.find_one({"telefone": telefone})
 

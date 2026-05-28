@@ -17,8 +17,13 @@
             <div class="font-bold text-xl flex items-center gap-2">
                 <span>🩺</span> AgentOS Admin
             </div>
-            <div>
-                <span class="text-sm bg-teal-700 px-3 py-1 rounded-full border border-teal-500">Motor Central Online</span>
+            <div class="flex items-center gap-3">
+                <a href="/chat" target="_blank" class="text-sm bg-teal-700 hover:bg-teal-800 px-3 py-1 rounded-full border border-teal-500 transition-colors">📱 Simulador</a>
+                <a href="/atendimento" class="text-sm bg-teal-700 hover:bg-teal-800 px-3 py-1 rounded-full border border-teal-500 transition-colors">💬 Painel de Atendimento</a>
+                <span id="user-name" class="text-sm opacity-80"></span>
+                <button onclick="logout()" class="text-sm bg-red-500/20 hover:bg-red-500/40 px-3 py-1.5 rounded-lg border border-red-400/30 transition-colors" title="Sair">
+                    🚪 Sair
+                </button>
             </div>
         </div>
     </nav>
@@ -69,12 +74,39 @@
             return `<span class="font-medium text-gray-900">${value}</span>`;
         }
 
+        // Interceptor: redireciona para /login em caso de 401
+        async function authFetch(url, options = {}) {
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return null;
+            }
+            return response;
+        }
+
+        // Carrega nome do usuário logado
+        async function loadUserInfo() {
+            try {
+                const res = await authFetch('/api/auth/me');
+                if (!res) return;
+                const data = await res.json();
+                document.getElementById('user-name').textContent = `👤 ${data.nome}`;
+            } catch (e) { /* silencioso */ }
+        }
+
+        // Logout
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
         // Função principal para buscar e popular a tabela
         async function loadLeads() {
             const tbody = document.getElementById('leads-table-body');
             
             try {
-                const response = await fetch('/api/admin/leads');
+                const response = await authFetch('/api/admin/leads');
+                if (!response) return;
                 const leads = await response.json();
                 
                 if (leads.length === 0) {
@@ -101,7 +133,10 @@
         }
 
         // Carrega automaticamente ao abrir a página
-        document.addEventListener("DOMContentLoaded", loadLeads);
+        document.addEventListener("DOMContentLoaded", () => {
+            loadUserInfo();
+            loadLeads();
+        });
     </script>
 </body>
 </html>

@@ -1,13 +1,15 @@
 import os
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from controllers import webhook
 from controllers import atendimento
+from controllers import auth
 from services.ia_service import processar_mensagem_com_memoria
 from services.auto_return_service import iniciar_verificacao_inatividade
+from services.auth_service import get_current_user
 from core.database import sessions_collection
 
 @asynccontextmanager
@@ -23,9 +25,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Registra o router do webhook e define que o caminho base será /webhook
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    # Se der erro 401 em rotas de páginas (que não são da API), redireciona para o login
+    if exc.status_code == 401 and not request.url.path.startswith("/api/"):
+        return RedirectResponse(url="/login", status_code=303)
+        
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+# Registra os routers
 app.include_router(webhook.router, prefix="/webhook", tags=["WhatsApp Webhook"])
 app.include_router(atendimento.router, prefix="", tags=["Atendimento Humano"])
+app.include_router(auth.router, prefix="", tags=["Autenticação"])
+
+
+# ── Rotas Públicas ──
 
 @app.get("/")
 async def root():
@@ -42,23 +59,26 @@ async def health_check():
         "database": "Configurado"
     }
 
+
+# ── Rotas Protegidas ──
+
 class ChatRequest(BaseModel):
     telefone: str
     mensagem: str
 
 @app.post("/api/simulator/chat", tags=["Simulador"])
-async def simulator_chat(request: ChatRequest):
+async def simulator_chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     resposta_ia = await processar_mensagem_com_memoria(request.telefone, request.mensagem)
     return {"resposta": resposta_ia}
 
 @app.get("/chat", response_class=HTMLResponse, tags=["Simulador"])
-async def chat_interface():
+async def chat_interface(current_user: dict = Depends(get_current_user)):
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "chat.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/api/admin/leads", tags=["Admin"])
-async def get_admin_leads():
+async def get_admin_leads(current_user: dict = Depends(get_current_user)):
     leads = []
     async for session in sessions_collection.find():
         leads.append({
@@ -71,14 +91,13 @@ async def get_admin_leads():
     return leads
 
 @app.get("/admin", response_class=HTMLResponse, tags=["Admin"])
-async def admin_interface():
+async def admin_interface(current_user: dict = Depends(get_current_user)):
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "admin.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/atendimento", response_class=HTMLResponse, tags=["Atendimento Humano"])
-async def atendimento_interface():
+async def atendimento_interface(current_user: dict = Depends(get_current_user)):
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "atendimento.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
-
