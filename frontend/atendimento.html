@@ -531,15 +531,17 @@
 
             let html = '';
             history.forEach((msg, i) => {
-                const isUser = msg.role === 'user';
+                const isPatient = msg.role === 'user';
+                const isOutgoing = !isPatient;
+                
                 const animClass = animate && i >= history.length - 3
-                    ? (isUser ? 'animate-slide-right' : 'animate-slide-left')
+                    ? (isOutgoing ? 'animate-slide-right' : 'animate-slide-left')
                     : '';
 
                 html += `
-                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} mb-2 ${animClass}">
+                <div class="flex ${isOutgoing ? 'justify-end' : 'justify-start'} mb-2 ${animClass}">
                     <div class="relative max-w-[75%] lg:max-w-[60%] px-3.5 py-2 rounded-xl text-sm shadow-sm
-                        ${isUser
+                        ${isOutgoing
                             ? 'bg-emerald-100 border border-emerald-200/80 text-gray-800 bubble-user rounded-tr-sm'
                             : 'bg-white border border-gray-200 text-gray-700 bubble-assistant rounded-tl-sm'
                         }">
