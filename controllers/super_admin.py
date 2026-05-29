@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from bson import ObjectId
 
-from core.database import clinicas_collection, users_collection, sessions_collection
+from core.database import empresas_collection, users_collection, sessions_collection
 from services.auth_service import get_current_user, hash_password
 
 router = APIRouter()
@@ -23,22 +23,26 @@ async def require_super_admin(current_user: dict = Depends(get_current_user)):
 def _serialize(doc: dict) -> dict:
     """Serializa ObjectId para string."""
     doc["_id"] = str(doc["_id"])
-    if "clinica_id" in doc and doc["clinica_id"]:
-        doc["clinica_id"] = str(doc["clinica_id"])
+    if "empresa_id" in doc and doc["empresa_id"]:
+        doc["empresa_id"] = str(doc["empresa_id"])
     return doc
 
 
 # ── Modelos de entrada ──
 
-class ClinicaCreate(BaseModel):
+class EmpresaCreate(BaseModel):
     nome: str
+    setor: str = "Outro"
+    campos_extracao: list[str] = []
     whatsapp_phone_id: str
     whatsapp_token: str
     prompt_sistema: str
     horarios_funcionamento: str = "Segunda a Sexta, das 08h às 18h"
 
-class ClinicaUpdate(BaseModel):
+class EmpresaUpdate(BaseModel):
     nome: str | None = None
+    setor: str | None = None
+    campos_extracao: list[str] | None = None
     whatsapp_phone_id: str | None = None
     whatsapp_token: str | None = None
     prompt_sistema: str | None = None
@@ -49,30 +53,30 @@ class UsuarioCreate(BaseModel):
     password: str
     nome: str
     role: str = "atendente"  # "atendente" ou "super_admin"
-    clinica_id: str | None = None  # Obrigatório para role=atendente
+    empresa_id: str | None = None  # Obrigatório para role=atendente
 
 class UsuarioUpdate(BaseModel):
     nome: str | None = None
     password: str | None = None  # Se preenchido, troca a senha
-    clinica_id: str | None = None
+    empresa_id: str | None = None
 
 
-# ── ROTAS: Clínicas ──
+# ── ROTAS: Empresas ──
 
-@router.get("/api/super-admin/clinicas", tags=["Super Admin"])
+@router.get("/api/super-admin/empresas", tags=["Super Admin"])
 async def listar_clinicas(current_user: dict = Depends(require_super_admin)):
     """Lista todas as clínicas cadastradas."""
-    clinicas = []
-    async for clinica in clinicas_collection.find():
-        clinicas.append(_serialize(clinica))
-    return clinicas
+    empresas = []
+    async for empresa in empresas_collection.find():
+        empresas.append(_serialize(empresa))
+    return empresas
 
 
-@router.post("/api/super-admin/clinicas", tags=["Super Admin"])
-async def criar_clinica(body: ClinicaCreate, current_user: dict = Depends(require_super_admin)):
+@router.post("/api/super-admin/empresas", tags=["Super Admin"])
+async def criar_clinica(body: EmpresaCreate, current_user: dict = Depends(require_super_admin)):
     """Cadastra uma nova clínica no sistema."""
     # Verifica se o phone_id já existe
-    existe = await clinicas_collection.find_one({"whatsapp_phone_id": body.whatsapp_phone_id})
+    existe = await empresas_collection.find_one({"whatsapp_phone_id": body.whatsapp_phone_id})
     if existe:
         raise HTTPException(status_code=409, detail=f"Já existe uma clínica com phone_id '{body.whatsapp_phone_id}'.")
 
@@ -81,65 +85,65 @@ async def criar_clinica(body: ClinicaCreate, current_user: dict = Depends(requir
         "created_at": datetime.utcnow(),
         "ativa": True,
     }
-    result = await clinicas_collection.insert_one(doc)
-    clinica = await clinicas_collection.find_one({"_id": result.inserted_id})
+    result = await empresas_collection.insert_one(doc)
+    empresa = await empresas_collection.find_one({"_id": result.inserted_id})
     print(f"🏥 [SuperAdmin] Clínica criada: {body.nome}")
-    return _serialize(clinica)
+    return _serialize(empresa)
 
 
-@router.get("/api/super-admin/clinicas/{clinica_id}", tags=["Super Admin"])
-async def obter_clinica(clinica_id: str, current_user: dict = Depends(require_super_admin)):
+@router.get("/api/super-admin/empresas/{empresa_id}", tags=["Super Admin"])
+async def obter_clinica(empresa_id: str, current_user: dict = Depends(require_super_admin)):
     """Retorna os detalhes de uma clínica."""
     try:
-        clinica = await clinicas_collection.find_one({"_id": ObjectId(clinica_id)})
+        empresa = await empresas_collection.find_one({"_id": ObjectId(empresa_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="clinica_id inválido.")
-    if not clinica:
+        raise HTTPException(status_code=400, detail="empresa_id inválido.")
+    if not empresa:
         raise HTTPException(status_code=404, detail="Clínica não encontrada.")
-    return _serialize(clinica)
+    return _serialize(empresa)
 
 
-@router.put("/api/super-admin/clinicas/{clinica_id}", tags=["Super Admin"])
-async def atualizar_clinica(clinica_id: str, body: ClinicaUpdate, current_user: dict = Depends(require_super_admin)):
+@router.put("/api/super-admin/empresas/{empresa_id}", tags=["Super Admin"])
+async def atualizar_clinica(empresa_id: str, body: EmpresaUpdate, current_user: dict = Depends(require_super_admin)):
     """Atualiza as configurações de uma clínica (prompt, token, horários, etc.)."""
     try:
-        oid = ObjectId(clinica_id)
+        oid = ObjectId(empresa_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="clinica_id inválido.")
+        raise HTTPException(status_code=400, detail="empresa_id inválido.")
 
     campos = {k: v for k, v in body.model_dump().items() if v is not None}
     if not campos:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
 
     campos["updated_at"] = datetime.utcnow()
-    result = await clinicas_collection.update_one({"_id": oid}, {"$set": campos})
+    result = await empresas_collection.update_one({"_id": oid}, {"$set": campos})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Clínica não encontrada.")
 
-    clinica = await clinicas_collection.find_one({"_id": oid})
-    print(f"✏️ [SuperAdmin] Clínica {clinica_id} atualizada.")
-    return _serialize(clinica)
+    empresa = await empresas_collection.find_one({"_id": oid})
+    print(f"✏️ [SuperAdmin] Clínica {empresa_id} atualizada.")
+    return _serialize(empresa)
 
 
-@router.delete("/api/super-admin/clinicas/{clinica_id}", tags=["Super Admin"])
-async def deletar_clinica(clinica_id: str, current_user: dict = Depends(require_super_admin)):
+@router.delete("/api/super-admin/empresas/{empresa_id}", tags=["Super Admin"])
+async def deletar_clinica(empresa_id: str, current_user: dict = Depends(require_super_admin)):
     """Remove uma clínica e todos os seus dados (usuários e sessões)."""
     try:
-        oid = ObjectId(clinica_id)
+        oid = ObjectId(empresa_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="clinica_id inválido.")
+        raise HTTPException(status_code=400, detail="empresa_id inválido.")
 
     # Remove clínica
-    result = await clinicas_collection.delete_one({"_id": oid})
+    result = await empresas_collection.delete_one({"_id": oid})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Clínica não encontrada.")
 
     # Limpa usuários e sessões vinculados
-    await users_collection.delete_many({"clinica_id": clinica_id})
-    await sessions_collection.delete_many({"clinica_id": clinica_id})
+    await users_collection.delete_many({"empresa_id": empresa_id})
+    await sessions_collection.delete_many({"empresa_id": empresa_id})
 
-    print(f"🗑️ [SuperAdmin] Clínica {clinica_id} e seus dados foram removidos.")
-    return {"status": "sucesso", "mensagem": f"Clínica {clinica_id} removida com todos os seus dados."}
+    print(f"🗑️ [SuperAdmin] Clínica {empresa_id} e seus dados foram removidos.")
+    return {"status": "sucesso", "mensagem": f"Clínica {empresa_id} removida com todos os seus dados."}
 
 
 # ── ROTAS: Usuários / Atendentes ──
@@ -161,15 +165,15 @@ async def criar_usuario(body: UsuarioCreate, current_user: dict = Depends(requir
     if existe:
         raise HTTPException(status_code=409, detail=f"Usuário '{body.username}' já existe.")
 
-    if body.role == "atendente" and not body.clinica_id:
-        raise HTTPException(status_code=400, detail="clinica_id é obrigatório para o role 'atendente'.")
+    if body.role == "atendente" and not body.empresa_id:
+        raise HTTPException(status_code=400, detail="empresa_id é obrigatório para o role 'atendente'.")
 
     doc = {
         "username": body.username,
         "password_hash": hash_password(body.password),
         "nome": body.nome,
         "role": body.role,
-        "clinica_id": body.clinica_id,
+        "empresa_id": body.empresa_id,
         "created_at": datetime.utcnow(),
     }
     result = await users_collection.insert_one(doc)
@@ -207,8 +211,8 @@ async def atualizar_usuario(username: str, body: UsuarioUpdate, current_user: di
         if len(body.password) < 4:
             raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 4 caracteres.")
         campos["password_hash"] = hash_password(body.password)
-    if body.clinica_id is not None:  # Permite setar como None (desvincular)
-        campos["clinica_id"] = body.clinica_id if body.clinica_id else None
+    if body.empresa_id is not None:  # Permite setar como None (desvincular)
+        campos["empresa_id"] = body.empresa_id if body.empresa_id else None
 
     if not campos:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
@@ -227,7 +231,7 @@ async def atualizar_usuario(username: str, body: UsuarioUpdate, current_user: di
 @router.get("/api/super-admin/stats", tags=["Super Admin"])
 async def obter_stats(current_user: dict = Depends(require_super_admin)):
     """Retorna estatísticas gerais + resumo por clínica para o dashboard."""
-    total_clinicas = await clinicas_collection.count_documents({})
+    total_clinicas = await empresas_collection.count_documents({})
     total_usuarios = await users_collection.count_documents({})
     total_sessoes = await sessions_collection.count_documents({})
     sessoes_ativas_humano = await sessions_collection.count_documents({"owner": "human"})
@@ -235,29 +239,29 @@ async def obter_stats(current_user: dict = Depends(require_super_admin)):
 
     # Resumo por clínica: nome + contagem de sessões
     clinicas_resumo = []
-    async for clinica in clinicas_collection.find():
-        cid = str(clinica["_id"])
-        total = await sessions_collection.count_documents({"clinica_id": cid})
-        humanos = await sessions_collection.count_documents({"clinica_id": cid, "owner": "human"})
+    async for empresa in empresas_collection.find():
+        cid = str(empresa["_id"])
+        total = await sessions_collection.count_documents({"empresa_id": cid})
+        humanos = await sessions_collection.count_documents({"empresa_id": cid, "owner": "human"})
         clinicas_resumo.append({
             "_id": cid,
-            "nome": clinica.get("nome"),
+            "nome": empresa.get("nome"),
             "total_sessoes": total,
             "sessoes_humano": humanos,
-            "ativa": clinica.get("ativa", True),
+            "ativa": empresa.get("ativa", True),
         })
 
     # Últimas sessões em atendimento humano (para o feed de atividade)
     recentes = []
     cursor = sessions_collection.find(
         {"owner": "human"},
-        {"telefone": 1, "nome": 1, "clinica_id": 1, "human_takeover_at": 1}
+        {"telefone": 1, "nome": 1, "empresa_id": 1, "human_takeover_at": 1}
     ).sort("human_takeover_at", -1).limit(5)
     async for s in cursor:
         recentes.append({
             "telefone": s.get("telefone"),
             "nome": s.get("nome") or "Pac. desconhecido",
-            "clinica_id": s.get("clinica_id"),
+            "empresa_id": s.get("empresa_id"),
             "human_takeover_at": s.get("human_takeover_at").isoformat() if s.get("human_takeover_at") else None,
         })
 

@@ -3,23 +3,23 @@ import asyncio
 from datetime import datetime, timedelta
 from bson import ObjectId
 
-from core.database import sessions_collection, clinicas_collection
+from core.database import sessions_collection, empresas_collection
 from services.whatsapp_service import DEFAULT_ACCESS_TOKEN, DEFAULT_PHONE_ID
 
 # Timeout de inatividade em minutos (padrão: 15 minutos)
 TIMEOUT_MINUTOS = int(os.getenv("HUMAN_INACTIVITY_TIMEOUT_MINUTES", "15"))
 
 
-async def _get_tokens_da_clinica(clinica_id: str) -> tuple[str, str]:
+async def _get_tokens_da_clinica(empresa_id: str) -> tuple[str, str]:
     """
     Busca os tokens WhatsApp da clínica pelo ID.
     Retorna fallback do .env se não encontrar (simulador/testes).
     """
-    if clinica_id and clinica_id != "simulador":
+    if empresa_id and empresa_id != "simulador":
         try:
-            clinica = await clinicas_collection.find_one({"_id": ObjectId(clinica_id)})
-            if clinica:
-                return clinica.get("whatsapp_token"), clinica.get("whatsapp_phone_id")
+            empresa = await empresas_collection.find_one({"_id": ObjectId(empresa_id)})
+            if empresa:
+                return empresa.get("whatsapp_token"), empresa.get("whatsapp_phone_id")
         except Exception:
             pass
     return DEFAULT_ACCESS_TOKEN, DEFAULT_PHONE_ID
@@ -53,7 +53,7 @@ async def _verificar_sessoes_inativas():
 
     async for sessao in cursor:
         telefone = sessao.get("telefone", "desconhecido")
-        clinica_id = sessao.get("clinica_id", "simulador")
+        empresa_id = sessao.get("empresa_id", "simulador")
         historico = sessao.get("historico", [])
 
         if not historico:
@@ -78,14 +78,14 @@ async def _verificar_sessoes_inativas():
                     msg_encerramento = "Como não tivemos retorno, estou encerrando este atendimento humano por enquanto. Qualquer dúvida, é só me chamar!"
 
                     if not telefone.startswith("simulador_"):
-                        access_token, phone_id = await _get_tokens_da_clinica(clinica_id)
+                        access_token, phone_id = await _get_tokens_da_clinica(empresa_id)
                         await enviar_mensagem_whatsapp(telefone, msg_encerramento, access_token=access_token, phone_id=phone_id)
 
                     historico.append({"role": "assistant", "content": msg_encerramento})
                     historico.append({"role": "system", "content": "[Sistema] Atendimento humano encerrado por inatividade do paciente."})
 
                     await sessions_collection.update_one(
-                        {"telefone": telefone, "clinica_id": clinica_id},
+                        {"telefone": telefone, "empresa_id": empresa_id},
                         {"$set": {
                             "owner": "bot",
                             "historico": historico,
@@ -103,13 +103,13 @@ async def _verificar_sessoes_inativas():
                 msg_aviso = "Ainda está aí? Podemos continuar o atendimento?"
 
                 if not telefone.startswith("simulador_"):
-                    access_token, phone_id = await _get_tokens_da_clinica(clinica_id)
+                    access_token, phone_id = await _get_tokens_da_clinica(empresa_id)
                     await enviar_mensagem_whatsapp(telefone, msg_aviso, access_token=access_token, phone_id=phone_id)
 
                 historico.append({"role": "assistant", "content": msg_aviso})
 
                 await sessions_collection.update_one(
-                    {"telefone": telefone, "clinica_id": clinica_id},
+                    {"telefone": telefone, "empresa_id": empresa_id},
                     {"$set": {
                         "historico": historico,
                         "inactivity_warning_sent": True
@@ -133,7 +133,7 @@ async def _verificar_sessoes_inativas():
                 })
 
                 await sessions_collection.update_one(
-                    {"telefone": telefone, "clinica_id": clinica_id},
+                    {"telefone": telefone, "empresa_id": empresa_id},
                     {"$set": {
                         "owner": "bot",
                         "historico": historico,

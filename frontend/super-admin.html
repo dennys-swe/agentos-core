@@ -109,17 +109,17 @@
     .section-card-sub { font-size: 12px; color: var(--text-muted); }
 
     /* Clinic rows in dashboard */
-    .clinica-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
-    .clinica-row:last-child { border-bottom: none; }
-    .clinica-row:hover { background: rgba(255,255,255,0.02); }
-    .clinica-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; flex-shrink: 0; margin-right: 12px; }
-    .clinica-dot.inactive { background: var(--text-muted); }
-    .clinica-row-name { font-size: 14px; font-weight: 600; flex: 1; }
-    .clinica-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .clinica-stat { text-align: right; }
-    .clinica-stat-num { font-size: 16px; font-weight: 700; }
-    .clinica-stat-num.has-human { color: var(--yellow); }
-    .clinica-stat-label { font-size: 10px; color: var(--text-muted); }
+    .empresa-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+    .empresa-row:last-child { border-bottom: none; }
+    .empresa-row:hover { background: rgba(255,255,255,0.02); }
+    .empresa-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; flex-shrink: 0; margin-right: 12px; }
+    .empresa-dot.inactive { background: var(--text-muted); }
+    .empresa-row-name { font-size: 14px; font-weight: 600; flex: 1; }
+    .empresa-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .empresa-stat { text-align: right; }
+    .empresa-stat-num { font-size: 16px; font-weight: 700; }
+    .empresa-stat-num.has-human { color: var(--yellow); }
+    .empresa-stat-label { font-size: 10px; color: var(--text-muted); }
 
     /* Activity feed */
     .activity-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -149,7 +149,7 @@
     .badge-yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
     .badge-red { background: rgba(239,68,68,0.12); color: var(--red); }
 
-    /* ── Warning (user sem clínica) ── */
+    /* ── Warning (user sem empresa) ── */
     .warning-row td { background: rgba(245,158,11,0.04); }
 
     /* ── Modal ── */
@@ -224,9 +224,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Dashboard
     </div>
-    <div class="nav-item" onclick="showPage('clinicas')" id="nav-clinicas">
+    <div class="nav-item" onclick="showPage('clinicas')" id="nav-empresas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Clínicas
+      Empresas
     </div>
     <div class="nav-item" onclick="showPage('usuarios')" id="nav-usuarios">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
@@ -262,23 +262,23 @@
       </div>
       <div style="padding:24px">
         <div class="stats-grid">
-          <div class="stat-card c-purple"><div class="stat-icon">🏥</div><div class="stat-label">Clínicas Ativas</div><div class="stat-value" id="stat-clinicas">—</div></div>
+          <div class="stat-card c-purple"><div class="stat-icon">🏥</div><div class="stat-label">Empresas Ativas</div><div class="stat-value" id="stat-empresas">—</div></div>
           <div class="stat-card c-green"><div class="stat-icon">👥</div><div class="stat-label">Usuários</div><div class="stat-value" id="stat-usuarios">—</div></div>
           <div class="stat-card c-yellow"><div class="stat-icon">💬</div><div class="stat-label">Total Conversas</div><div class="stat-value" id="stat-sessoes">—</div></div>
           <div class="stat-card c-red"><div class="stat-icon">🔴</div><div class="stat-label">Em Atend. Humano</div><div class="stat-value" id="stat-humano">—</div></div>
         </div>
         <div class="dashboard-grid">
-          <!-- Clínicas resumo -->
+          <!-- Empresas resumo -->
           <div class="section-card">
             <div class="section-card-header">
               <div>
-                <div class="section-card-title">Clínicas</div>
+                <div class="section-card-title">Empresas</div>
                 <div class="section-card-sub">Conversas ativas por cliente</div>
               </div>
               <button class="btn btn-sm btn-primary" onclick="showPage('clinicas')">Ver todas →</button>
             </div>
-            <div id="dashboard-clinicas-list">
-              <div class="empty-state"><div class="icon">🏥</div><p>Nenhuma clínica cadastrada ainda.</p></div>
+            <div id="dashboard-empresas-list">
+              <div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.</p></div>
             </div>
           </div>
           <!-- Atividade recente -->
@@ -298,13 +298,13 @@
     </div>
 
     <!-- ── CLÍNICAS ── -->
-    <div class="page" id="page-clinicas">
+    <div class="page" id="page-empresas">
       <div class="topbar">
-        <div class="topbar-left"><h1>Clínicas</h1><p>Gerenciar clientes e configurações de integração</p></div>
+        <div class="topbar-left"><h1>Empresas</h1><p>Gerenciar clientes e configurações de integração</p></div>
         <div class="topbar-right">
-          <button class="btn btn-primary" onclick="openModalClinica()">
+          <button class="btn btn-primary" onclick="openModalEmpresa()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova Clínica
+            Nova Empresa
           </button>
         </div>
       </div>
@@ -313,14 +313,14 @@
           <table>
             <thead>
               <tr>
-                <th>Clínica</th>
+                <th>Empresa</th>
                 <th>Phone ID (Meta)</th>
                 <th>Horários</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
-            <tbody id="clinicas-tbody">
+            <tbody id="empresas-tbody">
               <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div></td></tr>
             </tbody>
           </table>
@@ -347,7 +347,7 @@
                 <th>Nome</th>
                 <th>Username</th>
                 <th>Role</th>
-                <th>Clínica Vinculada</th>
+                <th>Empresa Vinculada</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -362,48 +362,67 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- ── MODAL: Nova / Editar Clínica ── -->
-<div class="modal-backdrop" id="modal-clinica" onclick="closeModal('modal-clinica', event)">
+<!-- ── MODAL: Nova / Editar Empresa ── -->
+<div class="modal-backdrop" id="modal-empresa" onclick="closeModal('modal-empresa', event)">
   <div class="modal" style="width:620px">
     <div class="modal-header">
       <div>
-        <div class="modal-title" id="modal-clinica-title">Nova Clínica</div>
+        <div class="modal-title" id="modal-empresa-title">Nova Empresa</div>
         <div class="modal-sub">Configure a integração com o WhatsApp e o Prompt de IA</div>
       </div>
-      <button class="modal-close" onclick="closeModalById('modal-clinica')">✕</button>
+      <button class="modal-close" onclick="closeModalById('modal-empresa')">✕</button>
     </div>
-    <form id="form-clinica" onsubmit="submitClinica(event)">
-      <input type="hidden" id="clinica-edit-id">
+    <form id="form-empresa" onsubmit="submitEmpresa(event)">
+      <input type="hidden" id="empresa-edit-id">
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Nome da Clínica *</label>
-          <input class="form-input" id="clinica-nome" placeholder="Ex: Clínica Silva" required>
+          <label class="form-label">Nome da Empresa *</label>
+          <input class="form-input" id="empresa-nome" placeholder="Ex: Empresa Silva" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Horário de Atendimento</label>
-          <input class="form-input" id="clinica-horarios" placeholder="Seg–Sex, 08h–18h">
+          <label class="form-label">Setor *</label>
+          <select class="form-select" id="empresa-setor" required onchange="aplicarTemplateSetor()">
+            <option value="">— Selecione —</option>
+            <option value="Saúde">Saúde (Clínica, Consultório)</option>
+            <option value="PetShop">PetShop / Veterinária</option>
+            <option value="Advocacia">Escritório de Advocacia</option>
+            <option value="Varejo">Varejo / E-commerce</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">WhatsApp Phone ID (Meta) *</label>
+          <input class="form-input" id="empresa-phone-id" placeholder="Ex: 1044190922118441" required>
+          <div class="form-hint">📍 Meta Business → WhatsApp → Configurações da API</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Access Token do WhatsApp *</label>
+          <input class="form-input" id="empresa-token" placeholder="EAALy9..." type="password" required>
+          <div class="form-hint">🔑 Token de acesso permanente da Meta</div>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">WhatsApp Phone ID (Meta) *</label>
-        <input class="form-input" id="clinica-phone-id" placeholder="Ex: 1044190922118441" required>
-        <div class="form-hint">📍 Meta Business → WhatsApp → Configurações da API</div>
+        <label class="form-label">Horário de Atendimento</label>
+        <input class="form-input" id="empresa-horarios" placeholder="Seg–Sex, 08h–18h">
       </div>
+      <hr class="form-divider">
       <div class="form-group">
-        <label class="form-label">Access Token do WhatsApp *</label>
-        <input class="form-input" id="clinica-token" placeholder="EAALy9..." type="password" required>
-        <div class="form-hint">🔑 Token de acesso permanente da Meta para esta clínica</div>
+        <label class="form-label">Campos para Extrair (JSON) *</label>
+        <input class="form-input mono" id="empresa-campos-extracao" placeholder="Ex: nome, motivo, convenio" required>
+        <div class="form-hint">Digite os nomes dos campos separados por vírgula que a IA deve capturar.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Prompt do Sistema (IA) * <span>— cérebro do agente</span></label>
-        <textarea class="form-textarea mono" id="clinica-prompt" placeholder="Você é a assistente virtual da Clínica Silva, especializada em Cardiologia e Clínica Geral.&#10;Sua missão é realizar a triagem inicial dos pacientes de forma humanizada e concisa.&#10;&#10;INFORMAÇÕES DA CLÍNICA:&#10;- Especialidades: Dr. Marcos (Cardiologista), Dra. Larissa (Clínica Geral)&#10;- Convênios: Unimed, Bradesco Saúde&#10;- Valor Particular: R$ 350,00&#10;- Horário: Segunda a Sexta, 08h às 18h&#10;&#10;Seja calorosa, use respostas curtas ideais para WhatsApp." required></textarea>
-        <div class="form-hint">✅ O formato de saída JSON é <strong>injetado automaticamente</strong> pelo sistema. Escreva apenas a personalidade, dados e regras de atendimento da clínica.</div>
+        <textarea class="form-textarea mono" id="empresa-prompt" placeholder="Você é o assistente virtual da empresa... Sua missão é..." required></textarea>
+        <div class="form-hint">✅ A estrutura JSON para capturar os campos acima é <strong>injetada automaticamente</strong>. Escreva apenas a personalidade e regras da empresa.</div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeModalById('modal-clinica')">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="btn-submit-clinica">
+        <button type="button" class="btn btn-secondary" onclick="closeModalById('modal-empresa')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-empresa">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          Salvar Clínica
+          Salvar Empresa
         </button>
       </div>
     </form>
@@ -416,7 +435,7 @@
     <div class="modal-header">
       <div>
         <div class="modal-title">Novo Usuário</div>
-        <div class="modal-sub">Crie um atendente vinculado a uma clínica</div>
+        <div class="modal-sub">Crie um atendente vinculado a uma empresa</div>
       </div>
       <button class="modal-close" onclick="closeModalById('modal-novo-usuario')">✕</button>
     </div>
@@ -438,18 +457,18 @@
         </div>
         <div class="form-group">
           <label class="form-label">Role *</label>
-          <select class="form-select" id="nu-role" onchange="toggleClinicaSelectNU()">
-            <option value="atendente">👤 Atendente (Clínica)</option>
+          <select class="form-select" id="nu-role" onchange="toggleEmpresaSelectNU()">
+            <option value="atendente">👤 Atendente (Empresa)</option>
             <option value="super_admin">⭐ Super Admin (Agência)</option>
           </select>
         </div>
       </div>
       <div class="form-group" id="nu-clinica-group">
-        <label class="form-label">Clínica Vinculada *</label>
-        <select class="form-select" id="nu-clinica-id">
-          <option value="">— Selecione uma clínica —</option>
+        <label class="form-label">Empresa Vinculada *</label>
+        <select class="form-select" id="nu-empresa-id">
+          <option value="">— Selecione uma empresa —</option>
         </select>
-        <div class="form-hint">O atendente só verá conversas desta clínica.</div>
+        <div class="form-hint">O atendente só verá conversas desta empresa.</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeModalById('modal-novo-usuario')">Cancelar</button>
@@ -487,11 +506,11 @@
       </div>
       <hr class="form-divider">
       <div class="form-group" id="eu-clinica-group">
-        <label class="form-label">Clínica Vinculada</label>
-        <select class="form-select" id="eu-clinica-id">
-          <option value="">— Sem clínica vinculada —</option>
+        <label class="form-label">Empresa Vinculada</label>
+        <select class="form-select" id="eu-empresa-id">
+          <option value="">— Sem empresa vinculada —</option>
         </select>
-        <div class="form-hint">⚠️ Alterar a clínica muda quais conversas este atendente vê.</div>
+        <div class="form-hint">⚠️ Alterar a empresa muda quais conversas este atendente vê.</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeModalById('modal-editar-usuario')">Cancelar</button>
@@ -510,7 +529,7 @@
     <div class="modal-header">
       <div>
         <div class="modal-title">🧪 Testar Agente</div>
-        <div class="modal-sub" id="sim-clinica-nome">Simulando o agente desta clínica</div>
+        <div class="modal-sub" id="sim-empresa-nome">Simulando o agente desta empresa</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: flex-start;">
         <button class="btn btn-secondary btn-sm" onclick="reiniciarSimulador()" title="Limpar histórico de teste">🧹 Reiniciar</button>
@@ -523,7 +542,7 @@
       <button class="btn btn-primary" onclick="enviarSimMsg()" id="sim-send-btn">Enviar</button>
     </div>
     <div class="form-hint" style="margin-top:10px">
-      💡 As mensagens são salvas no banco com telefone <code>simulador_admin_[clinica_id]</code>. Não usa WhatsApp real.
+      💡 As mensagens são salvas no banco com telefone <code>simulador_admin_[empresa_id]</code>. Não usa WhatsApp real.
     </div>
   </div>
 </div>
@@ -532,9 +551,9 @@
 
 <script>
   // ── Estado ──
-  let clinicasCache = [];
+  let empresasCache = [];
   let usuariosCache = [];
-  let simClinicaId = null;
+  let simEmpresaId = null;
   let simTelefone = null;
   let simPollInterval = null;
   let simLastHistoryLength = 0;
@@ -549,7 +568,7 @@
       document.getElementById('avatar-initials').textContent = (user.nome || user.username).substring(0,2).toUpperCase();
     } catch { window.location.href = '/login'; return; }
 
-    await Promise.all([loadDashboard(), loadClinicas(), loadUsuarios()]);
+    await Promise.all([loadDashboard(), loadEmpresas(), loadUsuarios()]);
   }
 
   // ── Navegação ──
@@ -567,26 +586,26 @@
       if (!res.ok) return;
       const data = await res.json();
 
-      document.getElementById('stat-clinicas').textContent = data.total_clinicas;
+      document.getElementById('stat-empresas').textContent = data.total_clinicas;
       document.getElementById('stat-usuarios').textContent = data.total_usuarios;
       document.getElementById('stat-sessoes').textContent = data.total_sessoes;
       document.getElementById('stat-humano').textContent = data.sessoes_em_atendimento_humano;
 
-      // Clínicas resumo
-      const clinList = document.getElementById('dashboard-clinicas-list');
-      if (!data.clinicas_resumo || data.clinicas_resumo.length === 0) {
-        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏥</div><p>Nenhuma clínica cadastrada ainda.<br><a href="#" onclick="showPage('clinicas')" style="color:var(--accent-light)">Criar primeira clínica →</a></p></div>`;
+      // Empresas resumo
+      const clinList = document.getElementById('dashboard-empresas-list');
+      if (!data.empresas_resumo || data.empresas_resumo.length === 0) {
+        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.<br><a href="#" onclick="showPage('clinicas')" style="color:var(--accent-light)">Criar primeira empresa →</a></p></div>`;
       } else {
-        clinList.innerHTML = data.clinicas_resumo.map(c => `
-          <div class="clinica-row">
-            <div class="clinica-dot ${c.ativa ? '' : 'inactive'}"></div>
+        clinList.innerHTML = data.empresas_resumo.map(c => `
+          <div class="empresa-row">
+            <div class="empresa-dot ${c.ativa ? '' : 'inactive'}"></div>
             <div style="flex:1;min-width:0">
-              <div class="clinica-row-name">${esc(c.nome)}</div>
-              <div class="clinica-row-meta">${c.total_sessoes} conversa${c.total_sessoes !== 1 ? 's' : ''} total</div>
+              <div class="empresa-row-name">${esc(c.nome)}</div>
+              <div class="empresa-row-meta">${c.total_sessoes} conversa${c.total_sessoes !== 1 ? 's' : ''} total</div>
             </div>
-            <div class="clinica-stat">
-              <div class="clinica-stat-num ${c.sessoes_humano > 0 ? 'has-human' : ''}">${c.sessoes_humano}</div>
-              <div class="clinica-stat-label">em humano</div>
+            <div class="empresa-stat">
+              <div class="empresa-stat-num ${c.sessoes_humano > 0 ? 'has-human' : ''}">${c.sessoes_humano}</div>
+              <div class="empresa-stat-label">em humano</div>
             </div>
           </div>
         `).join('');
@@ -598,7 +617,7 @@
         actList.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>Nenhum atendimento humano ativo.</p></div>`;
       } else {
         actList.innerHTML = data.atividade_recente.map(s => {
-          const clinicaNome = clinicasCache.find(c => c._id === s.clinica_id)?.nome || s.clinica_id || 'Simulador';
+          const clinicaNome = empresasCache.find(c => c._id === s.empresa_id)?.nome || s.empresa_id || 'Simulador';
           const tel = s.telefone || '—';
           const hora = s.human_takeover_at ? new Date(s.human_takeover_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
           return `
@@ -616,20 +635,20 @@
     } catch(e) { console.error(e); toast('Erro ao carregar dashboard', 'error'); }
   }
 
-  // ── Clínicas ──
-  async function loadClinicas() {
+  // ── Empresas ──
+  async function loadEmpresas() {
     try {
-      const res = await fetch('/api/super-admin/clinicas');
-      clinicasCache = await res.json();
-      renderClinicas(clinicasCache);
-      populateClinicaSelects(clinicasCache);
-    } catch { toast('Erro ao carregar clínicas', 'error'); }
+      const res = await fetch('/api/super-admin/empresas');
+      empresasCache = await res.json();
+      renderEmpresas(empresasCache);
+      populateEmpresaSelects(empresasCache);
+    } catch { toast('Erro ao carregar empresas', 'error'); }
   }
 
-  function renderClinicas(clinicas) {
-    const tbody = document.getElementById('clinicas-tbody');
+  function renderEmpresas(clinicas) {
+    const tbody = document.getElementById('empresas-tbody');
     if (!clinicas.length) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">🏥</div><p>Nenhuma clínica cadastrada. Clique em "Nova Clínica" para começar!</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada. Clique em "Nova Empresa" para começar!</p></div></td></tr>`;
       return;
     }
     tbody.innerHTML = clinicas.map(c => `
@@ -641,96 +660,138 @@
         <td>
           <div class="actions">
             <button class="btn btn-sm btn-green" onclick="abrirSimulador('${c._id}', '${esc(c.nome)}')">🧪 Testar</button>
-            <button class="btn btn-sm btn-secondary" onclick="editClinica('${c._id}')">✏️ Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteClinica('${c._id}', '${esc(c.nome)}')">🗑️</button>
+            <button class="btn btn-sm btn-secondary" onclick="editEmpresa('${c._id}')">✏️ Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteEmpresa('${c._id}', '${esc(c.nome)}')">🗑️</button>
           </div>
         </td>
       </tr>
     `).join('');
   }
+  const templatesSetor = {
+    'Saúde': {
+      prompt: "Você é a assistente virtual de uma Clínica de Saúde. Sua missão é realizar a triagem inicial dos pacientes de forma humanizada e concisa.\n\nINFORMAÇÕES DA CLÍNICA:\n- Especialidades: \n- Convênios: \n- Valor Particular: \n- Horário: \n\nSeja calorosa, use respostas curtas ideais para WhatsApp.",
+      campos: "nome, motivo, convenio"
+    },
+    'PetShop': {
+      prompt: "Você é a assistente virtual de um PetShop e Clínica Veterinária. Sua missão é realizar o primeiro atendimento dos tutores de forma simpática e ágil.\n\nINFORMAÇÕES DO PETSHOP:\n- Serviços: Banho, Tosa, Consulta Veterinária\n- Valores: Banho a partir de R$ 60, Consulta R$ 150\n- Horário: \n\nSeja muito acolhedora e fofa, afinal lidamos com pets!",
+      campos: "nome_tutor, nome_pet, raca, servico_desejado"
+    },
+    'Advocacia': {
+      prompt: "Você é a assistente virtual de um Escritório de Advocacia. Sua missão é realizar a captação inicial do lead de forma profissional e objetiva.\n\nINFORMAÇÕES DO ESCRITÓRIO:\n- Áreas de Atuação: Cível, Trabalhista, Previdenciário\n- Consulta inicial: R$ 300\n- Horário: \n\nSeja muito educada, formal e concisa. Não dê conselhos jurídicos sob nenhuma hipótese.",
+      campos: "nome, area_direito, resumo_caso"
+    },
+    'Varejo': {
+      prompt: "Você é o assistente virtual de uma loja de Varejo. Sua missão é ajudar os clientes com dúvidas sobre produtos, entregas e pagamentos.\n\nINFORMAÇÕES DA LOJA:\n- Produtos principais: \n- Formas de Pagamento: \n- Tempo de entrega: \n\nSeja direto e persuasivo para incentivar a venda.",
+      campos: "nome, produto_interesse, duvida"
+    }
+  };
 
-  function openModalClinica() {
-    document.getElementById('clinica-edit-id').value = '';
-    document.getElementById('form-clinica').reset();
-    document.getElementById('modal-clinica-title').textContent = 'Nova Clínica';
-    document.getElementById('clinica-token').required = true;
-    document.getElementById('clinica-phone-id').readOnly = false;
-    document.getElementById('modal-clinica').classList.add('open');
+  function aplicarTemplateSetor() {
+    const setor = document.getElementById('empresa-setor').value;
+    const promptField = document.getElementById('empresa-prompt');
+    const camposField = document.getElementById('empresa-campos-extracao');
+    
+    if (setor && templatesSetor[setor]) {
+      if (!promptField.value.trim()) {
+        promptField.value = templatesSetor[setor].prompt;
+      }
+      if (!camposField.value.trim()) {
+        camposField.value = templatesSetor[setor].campos;
+      }
+    }
   }
 
-  function editClinica(id) {
-    const c = clinicasCache.find(x => x._id === id);
+  function openModalEmpresa() {
+    document.getElementById('empresa-edit-id').value = '';
+    document.getElementById('form-empresa').reset();
+    document.getElementById('modal-empresa-title').textContent = 'Nova Empresa';
+    document.getElementById('empresa-token').required = true;
+    document.getElementById('empresa-phone-id').readOnly = false;
+    document.getElementById('modal-empresa').classList.add('open');
+  }
+
+  function editEmpresa(id) {
+    const c = empresasCache.find(x => x._id === id);
     if (!c) return;
-    document.getElementById('clinica-edit-id').value = c._id;
-    document.getElementById('clinica-nome').value = c.nome;
-    document.getElementById('clinica-phone-id').value = c.whatsapp_phone_id;
-    document.getElementById('clinica-phone-id').readOnly = true;
-    document.getElementById('clinica-token').value = '';
-    document.getElementById('clinica-token').required = false;
-    document.getElementById('clinica-token').placeholder = 'Deixe em branco para manter o token atual';
-    document.getElementById('clinica-horarios').value = c.horarios_funcionamento || '';
-    document.getElementById('clinica-prompt').value = c.prompt_sistema || '';
-    document.getElementById('modal-clinica-title').textContent = 'Editar Clínica — ' + c.nome;
-    document.getElementById('modal-clinica').classList.add('open');
+    document.getElementById('empresa-edit-id').value = c._id;
+    document.getElementById('empresa-nome').value = c.nome;
+    document.getElementById('empresa-setor').value = c.setor || '';
+    document.getElementById('empresa-campos-extracao').value = (c.campos_extracao || []).join(', ');
+    document.getElementById('empresa-phone-id').value = c.whatsapp_phone_id;
+    document.getElementById('empresa-phone-id').readOnly = true;
+    document.getElementById('empresa-token').value = '';
+    document.getElementById('empresa-token').required = false;
+    document.getElementById('empresa-token').placeholder = 'Deixe em branco para manter o token atual';
+    document.getElementById('empresa-horarios').value = c.horarios_funcionamento || '';
+    document.getElementById('empresa-prompt').value = c.prompt_sistema || '';
+    document.getElementById('modal-empresa-title').textContent = 'Editar Empresa — ' + c.nome;
+    document.getElementById('modal-empresa').classList.add('open');
   }
 
-  async function submitClinica(e) {
+  async function submitEmpresa(e) {
     e.preventDefault();
-    const editId = document.getElementById('clinica-edit-id').value;
-    const tokenVal = document.getElementById('clinica-token').value.trim();
+    const editId = document.getElementById('empresa-edit-id').value;
+    const tokenVal = document.getElementById('empresa-token').value.trim();
+    
+    // Parse campos de extracao (remove espaços)
+    const rawCampos = document.getElementById('empresa-campos-extracao').value.trim();
+    const camposArray = rawCampos ? rawCampos.split(',').map(s => s.trim()).filter(Boolean) : [];
+
     const body = {
-      nome: document.getElementById('clinica-nome').value.trim(),
-      whatsapp_phone_id: document.getElementById('clinica-phone-id').value.trim(),
-      prompt_sistema: document.getElementById('clinica-prompt').value.trim(),
-      horarios_funcionamento: document.getElementById('clinica-horarios').value.trim(),
+      nome: document.getElementById('empresa-nome').value.trim(),
+      setor: document.getElementById('empresa-setor').value.trim(),
+      campos_extracao: camposArray,
+      whatsapp_phone_id: document.getElementById('empresa-phone-id').value.trim(),
+      prompt_sistema: document.getElementById('empresa-prompt').value.trim(),
+      horarios_funcionamento: document.getElementById('empresa-horarios').value.trim(),
     };
     if (tokenVal) body.whatsapp_token = tokenVal;
 
     if (!editId) body.whatsapp_token = tokenVal; // obrigatório na criação
 
-    const btn = document.getElementById('btn-submit-clinica');
+    const btn = document.getElementById('btn-submit-empresa');
     btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
     btn.disabled = true;
 
     try {
       const method = editId ? 'PUT' : 'POST';
-      const url = editId ? `/api/super-admin/clinicas/${editId}` : '/api/super-admin/clinicas';
+      const url = editId ? `/api/super-admin/empresas/${editId}` : '/api/super-admin/empresas';
       const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (res.ok) {
-        toast(`Clínica ${editId ? 'atualizada' : 'criada'} com sucesso! 🎉`, 'success');
-        closeModalById('modal-clinica');
-        await Promise.all([loadClinicas(), loadDashboard()]);
+        toast(`Empresa ${editId ? 'atualizada' : 'criada'} com sucesso! 🎉`, 'success');
+        closeModalById('modal-empresa');
+        await Promise.all([loadEmpresas(), loadDashboard()]);
       } else {
         const err = await res.json();
         toast(`Erro: ${err.detail}`, 'error');
       }
     } catch { toast('Erro de comunicação', 'error'); }
     finally {
-      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Salvar Clínica';
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Salvar Empresa';
       btn.disabled = false;
     }
   }
 
-  async function deleteClinica(id, nome) {
+  async function deleteEmpresa(id, nome) {
     if (!confirm(`Remover "${nome}" e TODOS os seus dados (sessões e usuários)?\n\nEsta ação é irreversível.`)) return;
     try {
-      const res = await fetch(`/api/super-admin/clinicas/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/super-admin/empresas/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        toast(`Clínica "${nome}" removida.`, 'success');
-        await Promise.all([loadClinicas(), loadDashboard()]);
+        toast(`Empresa "${nome}" removida.`, 'success');
+        await Promise.all([loadEmpresas(), loadDashboard()]);
       } else {
         const err = await res.json();
         toast(`Erro: ${err.detail}`, 'error');
       }
-    } catch { toast('Erro ao remover clínica', 'error'); }
+    } catch { toast('Erro ao remover empresa', 'error'); }
   }
 
   // ── Simulador de Agente ──
   function abrirSimulador(clinicaId, clinicaNome) {
-    simClinicaId = clinicaId;
+    simEmpresaId = clinicaId;
     simTelefone = 'simulador_admin_' + clinicaId;
     simLastHistoryLength = 0;
-    document.getElementById('sim-clinica-nome').textContent = '🏥 Simulando: ' + clinicaNome;
+    document.getElementById('sim-empresa-nome').textContent = '🏥 Simulando: ' + clinicaNome;
     
     // Inicia a UI
     document.getElementById('sim-chat-box').innerHTML = `
@@ -748,7 +809,7 @@
     closeModalById('modal-testar');
     if (simPollInterval) clearInterval(simPollInterval);
     simPollInterval = null;
-    simClinicaId = null;
+    simEmpresaId = null;
     simTelefone = null;
   }
 
@@ -811,7 +872,7 @@
   async function enviarSimMsg() {
     const input = document.getElementById('sim-input');
     const msg = input.value.trim();
-    if (!msg || !simClinicaId) return;
+    if (!msg || !simEmpresaId) return;
 
     const box = document.getElementById('sim-chat-box');
     input.value = '';
@@ -837,7 +898,7 @@
       const res = await fetch('/api/simulator/chat', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ telefone: simTelefone, mensagem: msg, clinica_id: simClinicaId })
+        body: JSON.stringify({ telefone: simTelefone, mensagem: msg, empresa_id: simEmpresaId })
       });
       const data = await res.json();
       
@@ -897,7 +958,7 @@
     }
     tbody.innerHTML = usuarios.map(u => {
       const isSuperAdmin = u.role === 'super_admin';
-      const clinica = u.clinica_id ? clinicasCache.find(c => c._id === u.clinica_id) : null;
+      const clinica = u.empresa_id ? empresasCache.find(c => c._id === u.empresa_id) : null;
       const clinicaNome = clinica ? clinica.nome : null;
       const semClinica = !isSuperAdmin && !clinicaNome;
       const roleBadge = isSuperAdmin
@@ -906,7 +967,7 @@
       const clinicaCell = isSuperAdmin
         ? '<span style="color:var(--text-muted);font-size:12px">— (acesso total)</span>'
         : semClinica
-          ? '<span class="badge badge-red">⚠️ Sem clínica</span>'
+          ? '<span class="badge badge-red">⚠️ Sem empresa</span>'
           : `<span style="font-size:13px">${esc(clinicaNome)}</span>`;
 
       return `
@@ -928,11 +989,11 @@
 
   function openModalNovoUsuario() {
     document.getElementById('form-novo-usuario').reset();
-    toggleClinicaSelectNU();
+    toggleEmpresaSelectNU();
     document.getElementById('modal-novo-usuario').classList.add('open');
   }
 
-  function toggleClinicaSelectNU() {
+  function toggleEmpresaSelectNU() {
     const role = document.getElementById('nu-role').value;
     document.getElementById('nu-clinica-group').style.display = role === 'atendente' ? 'block' : 'none';
   }
@@ -945,7 +1006,7 @@
       username: document.getElementById('nu-username').value.trim(),
       password: document.getElementById('nu-senha').value,
       role,
-      clinica_id: role === 'atendente' ? document.getElementById('nu-clinica-id').value : null,
+      empresa_id: role === 'atendente' ? document.getElementById('nu-empresa-id').value : null,
     };
     try {
       const res = await fetch('/api/super-admin/usuarios', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -969,13 +1030,13 @@
     document.getElementById('eu-senha').value = '';
     document.getElementById('edit-user-sub').textContent = `Editando: @${u.username} (${u.role === 'super_admin' ? 'Super Admin' : 'Atendente'})`;
 
-    // Mostra/oculta campo de clínica
+    // Mostra/oculta campo de empresa
     const euClinicaGroup = document.getElementById('eu-clinica-group');
     if (u.role === 'super_admin') {
       euClinicaGroup.style.display = 'none';
     } else {
       euClinicaGroup.style.display = 'block';
-      populateClinicaSelects(clinicasCache, u.clinica_id);
+      populateEmpresaSelects(empresasCache, u.empresa_id);
     }
 
     document.getElementById('modal-editar-usuario').classList.add('open');
@@ -988,10 +1049,10 @@
     const body = {};
     const nome = document.getElementById('eu-nome').value.trim();
     const senha = document.getElementById('eu-senha').value;
-    const clinicaId = role !== 'super_admin' ? document.getElementById('eu-clinica-id').value : null;
+    const clinicaId = role !== 'super_admin' ? document.getElementById('eu-empresa-id').value : null;
     if (nome) body.nome = nome;
     if (senha) body.password = senha;
-    if (role !== 'super_admin') body.clinica_id = clinicaId || null;
+    if (role !== 'super_admin') body.empresa_id = clinicaId || null;
 
     if (Object.keys(body).length === 0) { toast('Nenhuma alteração feita.', 'info'); return; }
 
@@ -1023,10 +1084,10 @@
   }
 
   // ── Helpers de Selects ──
-  function populateClinicaSelects(clinicas, selectedId = null) {
-    const opts = '<option value="">— Sem clínica vinculada —</option>' + clinicas.map(c => `<option value="${c._id}" ${c._id === selectedId ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
-    document.getElementById('nu-clinica-id').innerHTML = '<option value="">— Selecione uma clínica —</option>' + clinicas.map(c => `<option value="${c._id}">${esc(c.nome)}</option>`).join('');
-    document.getElementById('eu-clinica-id').innerHTML = opts;
+  function populateEmpresaSelects(clinicas, selectedId = null) {
+    const opts = '<option value="">— Sem empresa vinculada —</option>' + clinicas.map(c => `<option value="${c._id}" ${c._id === selectedId ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+    document.getElementById('nu-empresa-id').innerHTML = '<option value="">— Selecione uma empresa —</option>' + clinicas.map(c => `<option value="${c._id}">${esc(c.nome)}</option>`).join('');
+    document.getElementById('eu-empresa-id').innerHTML = opts;
   }
 
   // ── Auth ──

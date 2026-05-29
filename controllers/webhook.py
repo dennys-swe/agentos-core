@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, HTTPException, Query, Body, BackgroundTa
 from fastapi.responses import PlainTextResponse
 from dotenv import load_dotenv
 
-from core.database import clinicas_collection
+from core.database import empresas_collection
 from services.ia_service import processar_mensagem_com_memoria
 from services.whatsapp_service import enviar_mensagem_whatsapp
 
@@ -19,24 +19,24 @@ async def _get_clinica_por_phone_id(phone_number_id: str) -> dict | None:
     Busca a clínica no banco de dados pelo phone_number_id da Meta.
     Retorna None se não encontrar (fallback para .env / simulador).
     """
-    clinica = await clinicas_collection.find_one({"whatsapp_phone_id": phone_number_id})
-    return clinica
+    empresa = await empresas_collection.find_one({"whatsapp_phone_id": phone_number_id})
+    return empresa
 
 
 # --- Nova Função Wrapper para Background ---
-async def processar_e_responder(telefone_paciente: str, texto: str, clinica: dict | None):
+async def processar_e_responder(telefone_paciente: str, texto: str, empresa: dict | None):
     """
     Processa a mensagem e responde ao paciente.
-    Se `clinica` for None, usa os valores padrão do .env (fallback para simulador).
+    Se `empresa` for None, usa os valores padrão do .env (fallback para simulador).
     """
     try:
-        resposta_ia = await processar_mensagem_com_memoria(telefone_paciente, texto, clinica)
+        resposta_ia = await processar_mensagem_com_memoria(telefone_paciente, texto, empresa)
 
         # 👇 Só envia se NÃO for silêncio (transbordo ativo)
         if resposta_ia != "_SILENCE_":
             # Usa os tokens da clínica, se disponíveis
-            access_token = clinica.get("whatsapp_token") if clinica else None
-            phone_id = clinica.get("whatsapp_phone_id") if clinica else None
+            access_token = empresa.get("whatsapp_token") if empresa else None
+            phone_id = empresa.get("whatsapp_phone_id") if empresa else None
             await enviar_mensagem_whatsapp(telefone_paciente, resposta_ia, access_token=access_token, phone_id=phone_id)
             print(f"✅ [AgentOS] Respondeu para {telefone_paciente}: {resposta_ia}\n")
         else:
@@ -78,17 +78,17 @@ async def receive_message(background_tasks: BackgroundTasks, payload: dict = Bod
             # ── ROTEAMENTO MULTI-TENANT ──
             # Descobre qual clínica recebeu a mensagem pelo phone_number_id da Meta
             phone_number_id = value.get("metadata", {}).get("phone_number_id")
-            clinica = None
+            empresa = None
             if phone_number_id:
-                clinica = await _get_clinica_por_phone_id(phone_number_id)
-                if clinica:
-                    print(f"🏥 [Webhook] Mensagem roteada para: {clinica.get('nome', 'N/A')}")
+                empresa = await _get_clinica_por_phone_id(phone_number_id)
+                if empresa:
+                    print(f"🏥 [Webhook] Mensagem roteada para: {empresa.get('nome', 'N/A')}")
                 else:
                     print(f"⚠️ [Webhook] phone_number_id '{phone_number_id}' não mapeado. Usando fallback do .env.")
 
             if texto and telefone_paciente:
                 # Delega o processamento pesado para o background, passando o contexto da clínica
-                background_tasks.add_task(processar_e_responder, telefone_paciente, texto, clinica)
+                background_tasks.add_task(processar_e_responder, telefone_paciente, texto, empresa)
 
         # O retorno é instantâneo, evitando que a Meta cancele o Webhook
         return {"status": "success"}

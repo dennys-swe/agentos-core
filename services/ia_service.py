@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # Importa nossa coleção de sessões do MongoDB
 from core.database import sessions_collection
 # Importa configurações e prompt padrão (fallback para simulador/testes)
-from core.config_clinica import esta_em_horario_comercial
+from core.config_empresa import esta_em_horario_comercial
 from core.prompts import PROMPT_SISTEMA as PROMPT_SISTEMA_PADRAO
 
 load_dotenv()
@@ -40,7 +40,7 @@ llm = get_model()
 async def processar_mensagem_com_memoria(
     telefone_paciente: str,
     texto_usuario: str,
-    clinica: dict | None = None,
+    empresa: dict | None = None,
 ) -> str:
     """
     Processa a mensagem do paciente e gera uma resposta via IA.
@@ -48,27 +48,27 @@ async def processar_mensagem_com_memoria(
     Args:
         telefone_paciente: Número do paciente.
         texto_usuario: Texto enviado pelo paciente.
-        clinica: Documento da clínica do MongoDB. Se None, usa os padrões do .env (simulador/fallback).
+        empresa: Documento da clínica do MongoDB. Se None, usa os padrões do .env (simulador/fallback).
     """
     # Extrai o contexto da clínica ou usa os defaults
-    clinica_id = str(clinica["_id"]) if clinica else "simulador"
-    prompt_sistema = clinica.get("prompt_sistema", PROMPT_SISTEMA_PADRAO) if clinica else PROMPT_SISTEMA_PADRAO
-    clinica_nome = clinica.get("nome", "Clínica AgentOS") if clinica else "Clínica AgentOS"
+    empresa_id = str(empresa["_id"]) if empresa else "simulador"
+    prompt_sistema = empresa.get("prompt_sistema", PROMPT_SISTEMA_PADRAO) if empresa else PROMPT_SISTEMA_PADRAO
+    empresa_nome = empresa.get("nome", "Clínica AgentOS") if empresa else "Clínica AgentOS"
 
     # 1. Busca a sessão no banco (filtrando pela clínica para evitar colisão entre tenants)
     sessao = await sessions_collection.find_one({
         "telefone": telefone_paciente,
-        "clinica_id": clinica_id
+        "empresa_id": empresa_id
     })
 
     # 👇 A TRAVA DEVE FICAR AQUI, LOGO APÓS A BUSCA 👇
     if sessao and sessao.get("owner") == "human":
-        print(f"⏸️ [Transbordo] Conversa com {telefone_paciente} ({clinica_nome}) pausada. IA silenciada.")
+        print(f"⏸️ [Transbordo] Conversa com {telefone_paciente} ({empresa_nome}) pausada. IA silenciada.")
 
         # Apenas guarda a mensagem nova do paciente para a recepcionista ler depois
         novo_historico = sessao.get("historico", []) + [{"role": "user", "content": texto_usuario}]
         await sessions_collection.update_one(
-            {"telefone": telefone_paciente, "clinica_id": clinica_id},
+            {"telefone": telefone_paciente, "empresa_id": empresa_id},
             {"$set": {
                 "historico": novo_historico,
                 "last_patient_activity_at": datetime.utcnow(),
@@ -82,10 +82,10 @@ async def processar_mensagem_com_memoria(
     if sessao:
         historico_bd = sessao.get("historico", [])
     else:
-        print(f"🆕 Nova sessão criada para o paciente {telefone_paciente} na clínica '{clinica_nome}'")
+        print(f"🆕 Nova sessão criada para o paciente {telefone_paciente} na clínica '{empresa_nome}'")
         await sessions_collection.insert_one({
             "telefone": telefone_paciente,
-            "clinica_id": clinica_id,
+            "empresa_id": empresa_id,
             "historico": [],
             "nome": None,
             "motivo": None,
@@ -100,25 +100,37 @@ async def processar_mensagem_com_memoria(
         prompt_conteudo = prompt_conteudo.replace("{telefone_paciente}", telefone_paciente)
 
     # 3. Garante o bloco de instruções JSON — SEMPRE necessário para o parser funcionar.
-    #    Se o prompt da clínica não contiver as instruções de saída JSON, injetamos automaticamente.
+    #    Se o prompt da empresa não contiver as instruções de saída JSON, injetamos automaticamente.
     #    Isso libera o admin de precisar conhecer detalhes técnicos ao escrever o prompt.
-    JSON_FORMAT_BLOCK = """
+    campos_extracao = empresa.get("campos_extracao", ["nome", "motivo", "convenio"]) if empresa else ["nome", "motivo", "convenio"]
+    
+    # Monta a estrutura JSON dinamicamente baseada nos campos solicitados pela equipe AgentOS
+    if not campos_extracao:
+        json_keys = '"extraido": "nenhum campo solicitado"'
+    else:
+        json_keys = ",\n    ".join([f'"{campo}": "valor ou null"' for campo in campos_extracao])
 
-FORMATO DE SAÍDA OBRIGATÓRIO (NÃO ALTERE ESTE BLOCO):
-Você está se comunicando com um sistema de backend. Sua resposta DEVE SER EXCLUSIVAMENTE um objeto JSON válido.
-Comece diretamente com { e termine com }. Use | para separar múltiplos balões de mensagem.
+    JSON_FORMAT_BLOCK = f"""
 
-{
-  "resposta_para_paciente": "Texto para o paciente. Use | para separar balões.",
-  "dados_extraidos": {
-    "nome": "string ou null",
-    "motivo": "string ou null",
-    "convenio": "string ou null"
-  },
+====================================
+INSTRUÇÃO CRÍTICA DO SISTEMA:
+====================================
+Você NÃO é um chatbot comum respondendo texto. Você é um microsserviço que processa dados para uma API.
+Você DEVE OBRIGATORIAMENTE formatar SUA RESPOSTA INTEIRA como um ÚNICO bloco JSON válido.
+NÃO retorne texto puro, apenas o JSON.
+
+Estrutura JSON EXATA que você deve retornar (preencha os valores):
+```json
+{{
+  "resposta_para_paciente": "Sua resposta final aqui. Use o caractere | para separar múltiplos balões de mensagem.",
+  "dados_extraidos": {{
+    {json_keys}
+  }},
   "necessita_humano": false
-}
-
-Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente humano ou relatar emergência médica."""
+}}
+```
+Regra: Marque "necessita_humano": true SOMENTE SE o paciente pedir explicitamente para falar com um atendente humano ou relatar emergência.
+"""
 
     if "necessita_humano" not in prompt_conteudo:
         prompt_conteudo += JSON_FORMAT_BLOCK
@@ -137,7 +149,7 @@ Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente par
     mensagens_langchain.append(HumanMessage(content=texto_usuario))
 
     try:
-        print(f"🧠 [AgentOS] Gerando resposta para {telefone_paciente} ({clinica_nome})...")
+        print(f"🧠 [AgentOS] Gerando resposta para {telefone_paciente} ({empresa_nome})...")
         resposta = await llm.ainvoke(mensagens_langchain)
         conteudo_bruto = resposta.content
 
@@ -159,9 +171,9 @@ Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente par
 
             if necessita_humano:
                 if esta_em_horario_comercial():
-                    print(f"🚨 [Transbordo] Transferindo {telefone_paciente} ({clinica_nome}) para humano.")
+                    print(f"🚨 [Transbordo] Transferindo {telefone_paciente} ({empresa_nome}) para humano.")
                     await sessions_collection.update_one(
-                        {"telefone": telefone_paciente, "clinica_id": clinica_id},
+                        {"telefone": telefone_paciente, "empresa_id": empresa_id},
                         {"$set": {
                             "owner": "human",
                             "human_takeover_at": datetime.utcnow(),
@@ -200,7 +212,7 @@ Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente par
                 update_payload["$set"].update(campos_para_atualizar)
 
         await sessions_collection.update_one(
-            {"telefone": telefone_paciente, "clinica_id": clinica_id},
+            {"telefone": telefone_paciente, "empresa_id": empresa_id},
             update_payload
         )
 
