@@ -67,10 +67,24 @@ async def health_check():
 class ChatRequest(BaseModel):
     telefone: str
     mensagem: str
+    clinica_id: str | None = None  # Opcional: testa o agente de uma clínica específica
 
 @app.post("/api/simulator/chat", tags=["Simulador"])
 async def simulator_chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
-    resposta_ia = await processar_mensagem_com_memoria(request.telefone, request.mensagem)
+    """
+    Simulador de chat. Se clinica_id for passado, usa o prompt e config daquela clínica.
+    Útil para o Super Admin testar o agente de um cliente sem precisar do WhatsApp real.
+    """
+    clinica = None
+    if request.clinica_id:
+        from bson import ObjectId
+        from core.database import clinicas_collection
+        try:
+            clinica = await clinicas_collection.find_one({"_id": ObjectId(request.clinica_id)})
+        except Exception:
+            pass
+
+    resposta_ia = await processar_mensagem_com_memoria(request.telefone, request.mensagem, clinica)
     return {"resposta": resposta_ia}
 
 @app.get("/chat", response_class=HTMLResponse, tags=["Simulador"])

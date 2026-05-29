@@ -51,6 +51,11 @@ class UsuarioCreate(BaseModel):
     role: str = "atendente"  # "atendente" ou "super_admin"
     clinica_id: str | None = None  # Obrigatório para role=atendente
 
+class UsuarioUpdate(BaseModel):
+    nome: str | None = None
+    password: str | None = None  # Se preenchido, troca a senha
+    clinica_id: str | None = None
+
 
 # ── ROTAS: Clínicas ──
 
@@ -188,16 +193,73 @@ async def deletar_usuario(username: str, current_user: dict = Depends(require_su
     return {"status": "sucesso", "mensagem": f"Usuário '{username}' removido."}
 
 
+@router.patch("/api/super-admin/usuarios/{username}", tags=["Super Admin"])
+async def atualizar_usuario(username: str, body: UsuarioUpdate, current_user: dict = Depends(require_super_admin)):
+    """Atualiza nome, senha ou clínica de um usuário."""
+    user = await users_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Usuário '{username}' não encontrado.")
+
+    campos = {}
+    if body.nome:
+        campos["nome"] = body.nome
+    if body.password:
+        if len(body.password) < 4:
+            raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 4 caracteres.")
+        campos["password_hash"] = hash_password(body.password)
+    if body.clinica_id is not None:  # Permite setar como None (desvincular)
+        campos["clinica_id"] = body.clinica_id if body.clinica_id else None
+
+    if not campos:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
+
+    campos["updated_at"] = datetime.utcnow()
+    await users_collection.update_one({"username": username}, {"$set": campos})
+
+    user = await users_collection.find_one({"username": username})
+    user.pop("password_hash", None)
+    print(f"✏️ [SuperAdmin] Usuário {username} atualizado.")
+    return _serialize(user)
+
+
 # ── ROTAS: Dashboard / Estatísticas ──
 
 @router.get("/api/super-admin/stats", tags=["Super Admin"])
 async def obter_stats(current_user: dict = Depends(require_super_admin)):
-    """Retorna estatísticas gerais do sistema para o dashboard."""
+    """Retorna estatísticas gerais + resumo por clínica para o dashboard."""
     total_clinicas = await clinicas_collection.count_documents({})
     total_usuarios = await users_collection.count_documents({})
     total_sessoes = await sessions_collection.count_documents({})
     sessoes_ativas_humano = await sessions_collection.count_documents({"owner": "human"})
     sessoes_bot = await sessions_collection.count_documents({"owner": "bot"})
+
+    # Resumo por clínica: nome + contagem de sessões
+    clinicas_resumo = []
+    async for clinica in clinicas_collection.find():
+        cid = str(clinica["_id"])
+        total = await sessions_collection.count_documents({"clinica_id": cid})
+        humanos = await sessions_collection.count_documents({"clinica_id": cid, "owner": "human"})
+        clinicas_resumo.append({
+            "_id": cid,
+            "nome": clinica.get("nome"),
+            "total_sessoes": total,
+            "sessoes_humano": humanos,
+            "ativa": clinica.get("ativa", True),
+        })
+
+    # Últimas sessões em atendimento humano (para o feed de atividade)
+    recentes = []
+    cursor = sessions_collection.find(
+        {"owner": "human"},
+        {"telefone": 1, "nome": 1, "clinica_id": 1, "human_takeover_at": 1}
+    ).sort("human_takeover_at", -1).limit(5)
+    async for s in cursor:
+        recentes.append({
+            "telefone": s.get("telefone"),
+            "nome": s.get("nome") or "Pac. desconhecido",
+            "clinica_id": s.get("clinica_id"),
+            "human_takeover_at": s.get("human_takeover_at").isoformat() if s.get("human_takeover_at") else None,
+        })
 
     return {
         "total_clinicas": total_clinicas,
@@ -205,4 +267,6 @@ async def obter_stats(current_user: dict = Depends(require_super_admin)):
         "total_sessoes": total_sessoes,
         "sessoes_em_atendimento_humano": sessoes_ativas_humano,
         "sessoes_com_bot": sessoes_bot,
+        "clinicas_resumo": clinicas_resumo,
+        "atividade_recente": recentes,
     }
