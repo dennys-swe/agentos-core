@@ -10,7 +10,7 @@ from controllers import auth
 from controllers import super_admin
 from services.ia_service import processar_mensagem_com_memoria
 from services.auto_return_service import iniciar_verificacao_inatividade
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, get_empresa_filter
 from core.database import sessions_collection
 
 @asynccontextmanager
@@ -105,7 +105,8 @@ async def chat_interface(current_user: dict = Depends(get_current_user)):
 @app.get("/api/admin/leads", tags=["Admin"])
 async def get_admin_leads(current_user: dict = Depends(get_current_user)):
     leads = []
-    async for session in sessions_collection.find():
+    filtro = get_empresa_filter(current_user)
+    async for session in sessions_collection.find(filtro):
         leads.append({
             "telefone": session.get("telefone"),
             "nome": session.get("nome"),

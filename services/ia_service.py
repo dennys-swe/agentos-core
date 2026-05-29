@@ -2,8 +2,7 @@ import os
 import json
 import re
 from datetime import datetime
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
 
@@ -16,22 +15,18 @@ from core.prompts import PROMPT_SISTEMA as PROMPT_SISTEMA_PADRAO
 load_dotenv()
 
 def get_model():
-    provider = os.getenv("MODEL_PROVIDER", "gemini").lower()
+    print(f"🚀 [AgentOS] Inicializando motor IA via OpenRouter ({os.getenv('OPENROUTER_MODEL', 'google/gemini-2.5-flash')})")
+    
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if not api_key or api_key == "sk-or-v1-adicione-sua-chave-aqui":
+        print("⚠️ [Aviso] Chave OPENROUTER_API_KEY ausente ou inválida no .env. Configure-a para evitar erros.")
 
-    if provider == "groq":
-        print("🚀 [AgentOS] Usando motor Groq (Llama 3.1)")
-        return ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1
-        )
-    else:
-        print("🧠 [AgentOS] Usando motor Google (Gemini)")
-        return ChatGoogleGenerativeAI(
-            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-            api_key=os.getenv("GEMINI_API_KEY"),
-            temperature=0.1
-        )
+    return ChatOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+        model=os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash"),
+        temperature=0.1
+    )
 
 # Inicialização do LLM é feita uma única vez no startup
 llm = get_model()
@@ -139,14 +134,20 @@ Regra: Marque "necessita_humano": true SOMENTE SE o paciente pedir explicitament
 
     # 3. Monta a lista de mensagens para o LLM
     mensagens_langchain = [prompt_personalizado]
-    for msg in historico_bd:
+    
+    # JANELA DESLIZANTE DE MEMÓRIA: Envia apenas as últimas 6 mensagens para travar o custo.
+    historico_recente = historico_bd[-6:] if len(historico_bd) > 6 else historico_bd
+
+    for msg in historico_recente:
         if msg["role"] == "user":
             mensagens_langchain.append(HumanMessage(content=msg["content"]))
         elif msg["role"] == "assistant":
             mensagens_langchain.append(AIMessage(content=msg["content"]))
         # Mensagens de sistema (role: "system") são ignoradas no histórico do LLM
 
-    mensagens_langchain.append(HumanMessage(content=texto_usuario))
+    # Adiciona um lembrete forte no final da mensagem do usuário para evitar que a IA "esqueça" a formatação JSON
+    lembrete = "\n\n[SISTEMA]: Retorne OBRIGATORIAMENTE um bloco JSON válido contendo 'resposta_para_paciente' e os 'dados_extraidos'. NÃO retorne texto puro."
+    mensagens_langchain.append(HumanMessage(content=texto_usuario + lembrete))
 
     try:
         print(f"🧠 [AgentOS] Gerando resposta para {telefone_paciente} ({empresa_nome})...")
@@ -190,8 +191,12 @@ Regra: Marque "necessita_humano": true SOMENTE SE o paciente pedir explicitament
                     )
 
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            print(f"⚠️ Erro crítico ao decodificar JSON: {e}. Conteúdo: {conteudo_bruto}")
-            texto_resposta = "Desculpe, tive um pequeno lapso de memória. Poderia repetir?"
+            print(f"⚠️ Erro ao decodificar JSON: {e}. A IA retornou texto puro. Aplicando fallback de extração.")
+            # Fallback inteligente: se a IA mandou só o texto, assumimos que é a resposta e não extraímos dados novos.
+            texto_resposta = conteudo_bruto.strip()
+            # Se o texto resposta tiver chaves de código (markdown), limpamos
+            texto_resposta = re.sub(r'^```(json)?\n', '', texto_resposta)
+            texto_resposta = re.sub(r'\n```$', '', texto_resposta)
             dados_extraidos = {}
 
         # 5. Salva no banco (histórico + dados estruturados)

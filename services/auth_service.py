@@ -74,3 +74,19 @@ async def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     return user
+
+
+# ── Regras de Negócio de Multi-Tenant ──
+def get_empresa_filter(current_user: dict) -> dict:
+    """
+    Retorna o filtro de empresa para queries no MongoDB.
+    - Super Admins não têm mais bypass total (LGPD), eles só veem dados se vinculados a uma empresa.
+    - Atendentes / Gestores veem APENAS as sessões da sua empresa.
+    """
+    empresa_id = current_user.get("empresa_id")
+    # Para super admin sem empresa vinculada, não retorna {} (isso daria acesso global às conversas).
+    # Retornamos algo que não dará match em dados de clientes.
+    if current_user.get("role") == "super_admin" and not empresa_id:
+        return {"empresa_id": "__bloqueado_lgpd__"}
+    
+    return {"empresa_id": str(empresa_id) if empresa_id else "simulador"}

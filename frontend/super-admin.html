@@ -262,7 +262,7 @@
       </div>
       <div style="padding:24px">
         <div class="stats-grid">
-          <div class="stat-card c-purple"><div class="stat-icon">🏥</div><div class="stat-label">Empresas Ativas</div><div class="stat-value" id="stat-empresas">—</div></div>
+          <div class="stat-card c-purple"><div class="stat-icon">🏢</div><div class="stat-label">Empresas Ativas</div><div class="stat-value" id="stat-empresas">—</div></div>
           <div class="stat-card c-green"><div class="stat-icon">👥</div><div class="stat-label">Usuários</div><div class="stat-value" id="stat-usuarios">—</div></div>
           <div class="stat-card c-yellow"><div class="stat-icon">💬</div><div class="stat-label">Total Conversas</div><div class="stat-value" id="stat-sessoes">—</div></div>
           <div class="stat-card c-red"><div class="stat-icon">🔴</div><div class="stat-label">Em Atend. Humano</div><div class="stat-value" id="stat-humano">—</div></div>
@@ -278,15 +278,15 @@
               <button class="btn btn-sm btn-primary" onclick="showPage('empresas')">Ver todas →</button>
             </div>
             <div id="dashboard-empresas-list">
-              <div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.</p></div>
+              <div class="empty-state"><div class="icon">🏢</div><p>Nenhuma empresa cadastrada ainda.</p></div>
             </div>
           </div>
           <!-- Atividade recente -->
           <div class="section-card">
             <div class="section-card-header">
               <div>
-                <div class="section-card-title">Em Atendimento</div>
-                <div class="section-card-sub">Aguardando resposta humana</div>
+                <div class="section-card-title">Últimas Transferências (Feed)</div>
+                <div class="section-card-sub">Log de intervenção humana (dados mascarados)</div>
               </div>
             </div>
             <div id="dashboard-activity-list">
@@ -538,7 +538,7 @@
     </div>
     <div id="sim-chat-box"></div>
     <div class="sim-input-row">
-      <input class="sim-input" id="sim-input" placeholder="Digite uma mensagem como se fosse o paciente..." onkeydown="if(event.key==='Enter')enviarSimMsg()">
+      <input class="sim-input" id="sim-input" placeholder="Digite uma mensagem como se fosse o cliente..." onkeydown="if(event.key==='Enter')enviarSimMsg()">
       <button class="btn btn-primary" onclick="enviarSimMsg()" id="sim-send-btn">Enviar</button>
     </div>
     <div class="form-hint" style="margin-top:10px">
@@ -594,7 +594,7 @@
       // Empresas resumo
       const clinList = document.getElementById('dashboard-empresas-list');
       if (!data.empresas_resumo || data.empresas_resumo.length === 0) {
-        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.<br><a href="#" onclick="showPage('empresas')" style="color:var(--accent-light)">Criar primeira empresa →</a></p></div>`;
+        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏢</div><p>Nenhuma empresa cadastrada ainda.<br><a href="#" onclick="showPage('empresas')" style="color:var(--accent-light)">Criar primeira empresa →</a></p></div>`;
       } else {
         clinList.innerHTML = data.empresas_resumo.map(c => `
           <div class="empresa-row">
@@ -618,7 +618,8 @@
       } else {
         actList.innerHTML = data.atividade_recente.map(s => {
           const clinicaNome = empresasCache.find(c => c._id === s.empresa_id)?.nome || s.empresa_id || 'Simulador';
-          const tel = s.telefone || '—';
+          const telOrig = s.telefone || '';
+          const tel = telOrig.length >= 8 ? telOrig.substring(0, telOrig.length - 4) + '****' : (telOrig || '—');
           const hora = s.human_takeover_at ? new Date(s.human_takeover_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
           return `
             <div class="activity-item">
@@ -648,7 +649,7 @@
   function renderEmpresas(clinicas) {
     const tbody = document.getElementById('empresas-tbody');
     if (!clinicas.length) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada. Clique em "Nova Empresa" para começar!</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">🏢</div><p>Nenhuma empresa cadastrada. Clique em "Nova Empresa" para começar!</p></div></td></tr>`;
       return;
     }
     tbody.innerHTML = clinicas.map(c => `
@@ -669,7 +670,7 @@
   }
   const templatesSetor = {
     'Saúde': {
-      prompt: "Você é a assistente virtual de uma Clínica de Saúde. Sua missão é realizar a triagem inicial dos pacientes de forma humanizada e concisa.\n\nINFORMAÇÕES DA CLÍNICA:\n- Especialidades: \n- Convênios: \n- Valor Particular: \n- Horário: \n\nSeja calorosa, use respostas curtas ideais para WhatsApp.",
+      prompt: "Você é a assistente virtual de uma Empresa. Sua missão é realizar a triagem inicial dos clientes de forma humanizada e concisa.\n\nINFORMAÇÕES DA EMPRESA:\n- Serviços: \n- Preços: \n- Horário: \n\nSeja cordial, use respostas curtas ideais para WhatsApp.",
       campos: "nome, motivo, convenio"
     },
     'PetShop': {
@@ -791,11 +792,11 @@
     simEmpresaId = clinicaId;
     simTelefone = 'simulador_admin_' + clinicaId;
     simLastHistoryLength = 0;
-    document.getElementById('sim-empresa-nome').textContent = '🏥 Simulando: ' + clinicaNome;
+    document.getElementById('sim-empresa-nome').textContent = '🏢 Simulando: ' + clinicaNome;
     
     // Inicia a UI
     document.getElementById('sim-chat-box').innerHTML = `
-      <div class="sim-msg system">Simulador iniciado para "${clinicaNome}". Digite uma mensagem como se fosse um paciente.</div>
+      <div class="sim-msg system">Simulador iniciado para "${clinicaNome}". Digite uma mensagem como se fosse um cliente.</div>
     `;
     document.getElementById('modal-testar').classList.add('open');
     setTimeout(() => document.getElementById('sim-input').focus(), 100);

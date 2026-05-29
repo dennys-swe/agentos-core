@@ -5,23 +5,13 @@ from pydantic import BaseModel
 
 from core.database import sessions_collection, empresas_collection
 from services.whatsapp_service import formatar_numero_br, DEFAULT_ACCESS_TOKEN, DEFAULT_PHONE_ID
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, get_empresa_filter
 
 router = APIRouter()
 
 
 # --- Helpers ---
 
-def _get_empresa_filter(current_user: dict) -> dict:
-    """
-    Retorna o filtro de clínica para queries no MongoDB.
-    - Super Admins veem TUDO (sem filtro de empresa_id).
-    - Atendentes veem APENAS as sessões da sua clínica.
-    """
-    if current_user.get("role") == "super_admin":
-        return {}
-    empresa_id = current_user.get("empresa_id", "simulador")
-    return {"empresa_id": str(empresa_id)}
 
 
 async def _get_empresa_tokens(empresa_id: str) -> tuple[str, str]:
@@ -48,7 +38,7 @@ class RespostaHumana(BaseModel):
 @router.get("/api/admin/atendimentos", tags=["Atendimento Humano"])
 async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
     """Retorna sessões com owner='human', filtradas pela clínica do usuário logado."""
-    filtro = {"owner": "human", **_get_empresa_filter(current_user)}
+    filtro = {"owner": "human", **get_empresa_filter(current_user)}
     atendimentos = []
     cursor = sessions_collection.find(filtro).sort("human_takeover_at", -1)
 
@@ -71,7 +61,13 @@ async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
 @router.get("/api/admin/atendimentos/{telefone}/historico", tags=["Atendimento Humano"])
 async def obter_historico(telefone: str, current_user: dict = Depends(get_current_user)):
     """Retorna o histórico completo de mensagens de uma sessão (respeitando isolamento de tenant)."""
-    filtro = {"telefone": telefone, **_get_empresa_filter(current_user)}
+    filtro_empresa = get_empresa_filter(current_user)
+    
+    # Bypass para super admin testar o simulador
+    if current_user.get("role") == "super_admin" and telefone.startswith("simulador_admin_"):
+        filtro_empresa = {} 
+        
+    filtro = {"telefone": telefone, **filtro_empresa}
     sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
@@ -84,7 +80,7 @@ async def obter_historico(telefone: str, current_user: dict = Depends(get_curren
 @router.post("/api/admin/atendimentos/{telefone}/responder", tags=["Atendimento Humano"])
 async def responder_paciente(telefone: str, request: RespostaHumana, current_user: dict = Depends(get_current_user)):
     """Envia uma mensagem do atendente para o paciente via WhatsApp e salva no histórico."""
-    filtro = {"telefone": telefone, **_get_empresa_filter(current_user)}
+    filtro = {"telefone": telefone, **get_empresa_filter(current_user)}
     sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
@@ -140,7 +136,7 @@ async def responder_paciente(telefone: str, request: RespostaHumana, current_use
 @router.post("/api/admin/atendimentos/{telefone}/devolver", tags=["Atendimento Humano"])
 async def devolver_ao_bot(telefone: str, current_user: dict = Depends(get_current_user)):
     """Devolve o controle da conversa para o bot de IA."""
-    filtro = {"telefone": telefone, **_get_empresa_filter(current_user)}
+    filtro = {"telefone": telefone, **get_empresa_filter(current_user)}
     sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
