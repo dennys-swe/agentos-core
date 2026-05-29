@@ -99,6 +99,30 @@ async def processar_mensagem_com_memoria(
     if "{telefone_paciente}" in prompt_conteudo:
         prompt_conteudo = prompt_conteudo.replace("{telefone_paciente}", telefone_paciente)
 
+    # 3. Garante o bloco de instruções JSON — SEMPRE necessário para o parser funcionar.
+    #    Se o prompt da clínica não contiver as instruções de saída JSON, injetamos automaticamente.
+    #    Isso libera o admin de precisar conhecer detalhes técnicos ao escrever o prompt.
+    JSON_FORMAT_BLOCK = """
+
+FORMATO DE SAÍDA OBRIGATÓRIO (NÃO ALTERE ESTE BLOCO):
+Você está se comunicando com um sistema de backend. Sua resposta DEVE SER EXCLUSIVAMENTE um objeto JSON válido.
+Comece diretamente com { e termine com }. Use | para separar múltiplos balões de mensagem.
+
+{
+  "resposta_para_paciente": "Texto para o paciente. Use | para separar balões.",
+  "dados_extraidos": {
+    "nome": "string ou null",
+    "motivo": "string ou null",
+    "convenio": "string ou null"
+  },
+  "necessita_humano": false
+}
+
+Mude "necessita_humano" para true SOMENTE SE o paciente pedir explicitamente para falar com um atendente humano ou relatar emergência médica."""
+
+    if "necessita_humano" not in prompt_conteudo:
+        prompt_conteudo += JSON_FORMAT_BLOCK
+
     prompt_personalizado = SystemMessage(content=prompt_conteudo)
 
     # 3. Monta a lista de mensagens para o LLM

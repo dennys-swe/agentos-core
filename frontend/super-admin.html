@@ -396,8 +396,8 @@
       </div>
       <div class="form-group">
         <label class="form-label">Prompt do Sistema (IA) * <span>— cérebro do agente</span></label>
-        <textarea class="form-textarea mono" id="clinica-prompt" placeholder="Você é a assistente virtual da Clínica Silva. Sua missão é realizar a triagem inicial dos pacientes de forma humanizada..." required></textarea>
-        <div class="form-hint">⚠️ Inclua dados da clínica, especialidades, convênios e horários no prompt.</div>
+        <textarea class="form-textarea mono" id="clinica-prompt" placeholder="Você é a assistente virtual da Clínica Silva, especializada em Cardiologia e Clínica Geral.&#10;Sua missão é realizar a triagem inicial dos pacientes de forma humanizada e concisa.&#10;&#10;INFORMAÇÕES DA CLÍNICA:&#10;- Especialidades: Dr. Marcos (Cardiologista), Dra. Larissa (Clínica Geral)&#10;- Convênios: Unimed, Bradesco Saúde&#10;- Valor Particular: R$ 350,00&#10;- Horário: Segunda a Sexta, 08h às 18h&#10;&#10;Seja calorosa, use respostas curtas ideais para WhatsApp." required></textarea>
+        <div class="form-hint">✅ O formato de saída JSON é <strong>injetado automaticamente</strong> pelo sistema. Escreva apenas a personalidade, dados e regras de atendimento da clínica.</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeModalById('modal-clinica')">Cancelar</button>
