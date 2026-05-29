@@ -512,7 +512,10 @@
         <div class="modal-title">🧪 Testar Agente</div>
         <div class="modal-sub" id="sim-clinica-nome">Simulando o agente desta clínica</div>
       </div>
-      <button class="modal-close" onclick="fecharSimulador()">✕</button>
+      <div style="display: flex; gap: 8px; align-items: flex-start;">
+        <button class="btn btn-secondary btn-sm" onclick="reiniciarSimulador()" title="Limpar histórico de teste">🧹 Reiniciar</button>
+        <button class="modal-close" onclick="fecharSimulador()">✕</button>
+      </div>
     </div>
     <div id="sim-chat-box"></div>
     <div class="sim-input-row">
@@ -858,6 +861,23 @@
     btn.disabled = false;
     box.scrollTop = box.scrollHeight;
     input.focus();
+  }
+
+  async function reiniciarSimulador() {
+    if (!simTelefone) return;
+    if (!confirm('Deseja apagar todo o histórico de teste atual?')) return;
+    try {
+      const res = await fetch(`/api/simulator/chat/${simTelefone}`, { method: 'DELETE' });
+      if (res.ok) {
+        document.getElementById('sim-chat-box').innerHTML = `
+          <div class="sim-msg system">Simulador reiniciado. Digite uma mensagem...</div>
+        `;
+        simLastHistoryLength = 0;
+        toast('Chat reiniciado com sucesso', 'success');
+      } else {
+        toast('Erro ao reiniciar chat', 'error');
+      }
+    } catch { toast('Erro de comunicação', 'error'); }
   }
 
   // ── Usuários ──

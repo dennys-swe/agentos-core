@@ -87,6 +87,15 @@ async def simulator_chat(request: ChatRequest, current_user: dict = Depends(get_
     resposta_ia = await processar_mensagem_com_memoria(request.telefone, request.mensagem, clinica)
     return {"resposta": resposta_ia}
 
+@app.delete("/api/simulator/chat/{telefone}", tags=["Simulador"])
+async def limpar_chat_simulador(telefone: str, current_user: dict = Depends(get_current_user)):
+    """Remove a sessão do simulador para reiniciar o teste do zero."""
+    if not telefone.startswith("simulador_"):
+        raise HTTPException(status_code=400, detail="Apenas sessões do simulador podem ser apagadas por esta rota.")
+    from core.database import sessions_collection
+    result = await sessions_collection.delete_one({"telefone": telefone})
+    return {"sucesso": True, "apagado": result.deleted_count > 0}
+
 @app.get("/chat", response_class=HTMLResponse, tags=["Simulador"])
 async def chat_interface(current_user: dict = Depends(get_current_user)):
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "chat.html")
