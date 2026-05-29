@@ -533,6 +533,8 @@
   let usuariosCache = [];
   let simClinicaId = null;
   let simTelefone = null;
+  let simPollInterval = null;
+  let simLastHistoryLength = 0;
 
   // ── Init ──
   async function init() {
@@ -724,18 +726,83 @@
   function abrirSimulador(clinicaId, clinicaNome) {
     simClinicaId = clinicaId;
     simTelefone = 'simulador_admin_' + clinicaId;
+    simLastHistoryLength = 0;
     document.getElementById('sim-clinica-nome').textContent = '🏥 Simulando: ' + clinicaNome;
+    
+    // Inicia a UI
     document.getElementById('sim-chat-box').innerHTML = `
       <div class="sim-msg system">Simulador iniciado para "${clinicaNome}". Digite uma mensagem como se fosse um paciente.</div>
     `;
     document.getElementById('modal-testar').classList.add('open');
     setTimeout(() => document.getElementById('sim-input').focus(), 100);
+    
+    // Polling ativo a cada 2s
+    simPollInterval = setInterval(pollSimulador, 2000);
+    pollSimulador(true); // Carrega historico inicial se houver
   }
 
   function fecharSimulador() {
     closeModalById('modal-testar');
+    if (simPollInterval) clearInterval(simPollInterval);
+    simPollInterval = null;
     simClinicaId = null;
     simTelefone = null;
+  }
+
+  async function pollSimulador(isInitial = false) {
+    if (!simTelefone) return;
+    try {
+      const res = await fetch(`/api/admin/atendimentos/${simTelefone}/historico`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const historico = data.historico || [];
+      
+      if (isInitial) {
+        simLastHistoryLength = historico.length;
+        const box = document.getElementById('sim-chat-box');
+        if (historico.length > 0) {
+          box.innerHTML = '';
+          for (const msg of historico) {
+            if (msg.role === 'user') {
+              const div = document.createElement('div');
+              div.className = 'sim-msg user';
+              div.textContent = msg.content;
+              box.appendChild(div);
+            } else if (msg.role === 'assistant') {
+              const partes = msg.content.split('|').map(p => p.trim()).filter(Boolean);
+              partes.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'sim-msg bot';
+                div.textContent = p;
+                box.appendChild(div);
+              });
+            }
+          }
+          box.scrollTop = box.scrollHeight;
+        }
+        return;
+      }
+
+      if (historico.length > simLastHistoryLength) {
+        const novas = historico.slice(simLastHistoryLength);
+        simLastHistoryLength = historico.length;
+        
+        const box = document.getElementById('sim-chat-box');
+        for (const msg of novas) {
+          if (msg.role === 'assistant') {
+            document.getElementById('sim-typing')?.remove();
+            const partes = msg.content.split('|').map(p => p.trim()).filter(Boolean);
+            for (const parte of partes) {
+              const div = document.createElement('div');
+              div.className = 'sim-msg bot';
+              div.textContent = parte;
+              box.appendChild(div);
+            }
+          }
+        }
+        box.scrollTop = box.scrollHeight;
+      }
+    } catch (e) {}
   }
 
   async function enviarSimMsg() {
@@ -770,24 +837,16 @@
         body: JSON.stringify({ telefone: simTelefone, mensagem: msg, clinica_id: simClinicaId })
       });
       const data = await res.json();
-      document.getElementById('sim-typing')?.remove();
-
+      
       const resposta = data.resposta || '(sem resposta)';
       if (resposta === '_SILENCE_') {
+        document.getElementById('sim-typing')?.remove();
         const sysDiv = document.createElement('div');
         sysDiv.className = 'sim-msg system';
-        sysDiv.textContent = '🤫 [Transbordo ativo — IA silenciada]';
+        sysDiv.textContent = '🤫 [Transbordo ativo — IA silenciada. Aguardando humano]';
         box.appendChild(sysDiv);
-      } else {
-        // Divide por | como faz no WhatsApp real
-        const partes = resposta.split('|').map(p => p.trim()).filter(Boolean);
-        for (const parte of partes) {
-          const botDiv = document.createElement('div');
-          botDiv.className = 'sim-msg bot';
-          botDiv.textContent = parte;
-          box.appendChild(botDiv);
-        }
       }
+      // Se não for SILENCE, o pollSimulador renderizará a resposta da IA e removerá o typing
     } catch {
       document.getElementById('sim-typing')?.remove();
       const errDiv = document.createElement('div');
