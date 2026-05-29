@@ -224,7 +224,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Dashboard
     </div>
-    <div class="nav-item" onclick="showPage('clinicas')" id="nav-empresas">
+    <div class="nav-item" onclick="showPage('empresas')" id="nav-empresas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Empresas
     </div>
@@ -275,7 +275,7 @@
                 <div class="section-card-title">Empresas</div>
                 <div class="section-card-sub">Conversas ativas por cliente</div>
               </div>
-              <button class="btn btn-sm btn-primary" onclick="showPage('clinicas')">Ver todas →</button>
+              <button class="btn btn-sm btn-primary" onclick="showPage('empresas')">Ver todas →</button>
             </div>
             <div id="dashboard-empresas-list">
               <div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.</p></div>
@@ -586,7 +586,7 @@
       if (!res.ok) return;
       const data = await res.json();
 
-      document.getElementById('stat-empresas').textContent = data.total_clinicas;
+      document.getElementById('stat-empresas').textContent = data.total_empresas;
       document.getElementById('stat-usuarios').textContent = data.total_usuarios;
       document.getElementById('stat-sessoes').textContent = data.total_sessoes;
       document.getElementById('stat-humano').textContent = data.sessoes_em_atendimento_humano;
@@ -594,7 +594,7 @@
       // Empresas resumo
       const clinList = document.getElementById('dashboard-empresas-list');
       if (!data.empresas_resumo || data.empresas_resumo.length === 0) {
-        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.<br><a href="#" onclick="showPage('clinicas')" style="color:var(--accent-light)">Criar primeira empresa →</a></p></div>`;
+        clinList.innerHTML = `<div class="empty-state"><div class="icon">🏥</div><p>Nenhuma empresa cadastrada ainda.<br><a href="#" onclick="showPage('empresas')" style="color:var(--accent-light)">Criar primeira empresa →</a></p></div>`;
       } else {
         clinList.innerHTML = data.empresas_resumo.map(c => `
           <div class="empresa-row">

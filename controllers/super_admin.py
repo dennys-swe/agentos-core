@@ -232,18 +232,19 @@ async def atualizar_usuario(username: str, body: UsuarioUpdate, current_user: di
 async def obter_stats(current_user: dict = Depends(require_super_admin)):
     """Retorna estatísticas gerais + resumo por clínica para o dashboard."""
     total_clinicas = await empresas_collection.count_documents({})
+    total_empresas = await empresas_collection.count_documents({})
     total_usuarios = await users_collection.count_documents({})
     total_sessoes = await sessions_collection.count_documents({})
     sessoes_ativas_humano = await sessions_collection.count_documents({"owner": "human"})
     sessoes_bot = await sessions_collection.count_documents({"owner": "bot"})
 
     # Resumo por clínica: nome + contagem de sessões
-    clinicas_resumo = []
+    empresas_resumo = []
     async for empresa in empresas_collection.find():
         cid = str(empresa["_id"])
         total = await sessions_collection.count_documents({"empresa_id": cid})
         humanos = await sessions_collection.count_documents({"empresa_id": cid, "owner": "human"})
-        clinicas_resumo.append({
+        empresas_resumo.append({
             "_id": cid,
             "nome": empresa.get("nome"),
             "total_sessoes": total,
@@ -266,11 +267,11 @@ async def obter_stats(current_user: dict = Depends(require_super_admin)):
         })
 
     return {
-        "total_clinicas": total_clinicas,
+        "total_empresas": total_empresas,
         "total_usuarios": total_usuarios,
         "total_sessoes": total_sessoes,
         "sessoes_em_atendimento_humano": sessoes_ativas_humano,
         "sessoes_com_bot": sessoes_bot,
-        "clinicas_resumo": clinicas_resumo,
+        "empresas_resumo": empresas_resumo,
         "atividade_recente": recentes,
     }
