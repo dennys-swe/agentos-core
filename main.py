@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from controllers import webhook
 from controllers import atendimento
 from controllers import auth
+from controllers import super_admin
 from services.ia_service import processar_mensagem_com_memoria
 from services.auto_return_service import iniciar_verificacao_inatividade
 from services.auth_service import get_current_user
@@ -40,6 +41,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 app.include_router(webhook.router, prefix="/webhook", tags=["WhatsApp Webhook"])
 app.include_router(atendimento.router, prefix="", tags=["Atendimento Humano"])
 app.include_router(auth.router, prefix="", tags=["Autenticação"])
+app.include_router(super_admin.router, prefix="", tags=["Super Admin"])
 
 
 # ── Rotas Públicas ──
@@ -99,5 +101,16 @@ async def admin_interface(current_user: dict = Depends(get_current_user)):
 @app.get("/atendimento", response_class=HTMLResponse, tags=["Atendimento Humano"])
 async def atendimento_interface(current_user: dict = Depends(get_current_user)):
     html_path = os.path.join(os.path.dirname(__file__), "frontend", "atendimento.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/super-admin", response_class=HTMLResponse, tags=["Super Admin"])
+async def super_admin_interface(current_user: dict = Depends(get_current_user)):
+    """Painel exclusivo da AgentOS para gerenciar clínicas e usuários. Requer role=super_admin."""
+    if current_user.get("role") != "super_admin":
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/atendimento", status_code=303)
+    html_path = os.path.join(os.path.dirname(__file__), "frontend", "super-admin.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()

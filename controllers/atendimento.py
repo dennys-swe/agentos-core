@@ -3,11 +3,40 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from core.database import sessions_collection
-from services.whatsapp_service import formatar_numero_br, ACCESS_TOKEN, PHONE_ID, URL
+from core.database import sessions_collection, clinicas_collection
+from services.whatsapp_service import formatar_numero_br, DEFAULT_ACCESS_TOKEN, DEFAULT_PHONE_ID
 from services.auth_service import get_current_user
 
 router = APIRouter()
+
+
+# --- Helpers ---
+
+def _get_clinica_filter(current_user: dict) -> dict:
+    """
+    Retorna o filtro de clínica para queries no MongoDB.
+    - Super Admins veem TUDO (sem filtro de clinica_id).
+    - Atendentes veem APENAS as sessões da sua clínica.
+    """
+    if current_user.get("role") == "super_admin":
+        return {}
+    clinica_id = current_user.get("clinica_id", "simulador")
+    return {"clinica_id": str(clinica_id)}
+
+
+async def _get_clinica_tokens(clinica_id: str) -> tuple[str, str]:
+    """
+    Retorna (access_token, phone_id) da clínica. Fallback para .env se não encontrar.
+    """
+    if clinica_id and clinica_id != "simulador":
+        from bson import ObjectId
+        try:
+            clinica = await clinicas_collection.find_one({"_id": ObjectId(clinica_id)})
+            if clinica:
+                return clinica.get("whatsapp_token"), clinica.get("whatsapp_phone_id")
+        except Exception:
+            pass
+    return DEFAULT_ACCESS_TOKEN, DEFAULT_PHONE_ID
 
 
 # --- Modelo de entrada ---
@@ -18,9 +47,10 @@ class RespostaHumana(BaseModel):
 # --- GET: Lista todos os atendimentos humanos ativos ---
 @router.get("/api/admin/atendimentos", tags=["Atendimento Humano"])
 async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
-    """Retorna todas as sessões que estão sob controle de um atendente humano."""
+    """Retorna sessões com owner='human', filtradas pela clínica do usuário logado."""
+    filtro = {"owner": "human", **_get_clinica_filter(current_user)}
     atendimentos = []
-    cursor = sessions_collection.find({"owner": "human"}).sort("human_takeover_at", -1)
+    cursor = sessions_collection.find(filtro).sort("human_takeover_at", -1)
 
     async for sessao in cursor:
         atendimentos.append({
@@ -29,6 +59,7 @@ async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
             "motivo": sessao.get("motivo"),
             "convenio": sessao.get("convenio"),
             "status": sessao.get("status"),
+            "clinica_id": sessao.get("clinica_id"),
             "human_takeover_at": sessao.get("human_takeover_at"),
             "last_human_activity_at": sessao.get("last_human_activity_at"),
         })
@@ -39,8 +70,9 @@ async def listar_atendimentos(current_user: dict = Depends(get_current_user)):
 # --- GET: Histórico completo de uma conversa ---
 @router.get("/api/admin/atendimentos/{telefone}/historico", tags=["Atendimento Humano"])
 async def obter_historico(telefone: str, current_user: dict = Depends(get_current_user)):
-    """Retorna o histórico completo de mensagens de uma sessão."""
-    sessao = await sessions_collection.find_one({"telefone": telefone})
+    """Retorna o histórico completo de mensagens de uma sessão (respeitando isolamento de tenant)."""
+    filtro = {"telefone": telefone, **_get_clinica_filter(current_user)}
+    sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
@@ -52,7 +84,8 @@ async def obter_historico(telefone: str, current_user: dict = Depends(get_curren
 @router.post("/api/admin/atendimentos/{telefone}/responder", tags=["Atendimento Humano"])
 async def responder_paciente(telefone: str, request: RespostaHumana, current_user: dict = Depends(get_current_user)):
     """Envia uma mensagem do atendente para o paciente via WhatsApp e salva no histórico."""
-    sessao = await sessions_collection.find_one({"telefone": telefone})
+    filtro = {"telefone": telefone, **_get_clinica_filter(current_user)}
+    sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
@@ -62,13 +95,18 @@ async def responder_paciente(telefone: str, request: RespostaHumana, current_use
     historico.append({"role": "assistant", "content": request.mensagem})
 
     await sessions_collection.update_one(
-        {"telefone": telefone},
+        filtro,
         {"$set": {
             "historico": historico,
             "last_human_activity_at": datetime.utcnow(),
             "inactivity_warning_sent": False
         }}
     )
+
+    # Busca os tokens corretos da clínica
+    clinica_id = sessao.get("clinica_id", "simulador")
+    access_token, phone_id = await _get_clinica_tokens(clinica_id)
+    url = f"https://graph.facebook.com/v25.0/{phone_id}/messages"
 
     # Envia a mensagem diretamente via WhatsApp (sem split por |)
     try:
@@ -81,10 +119,10 @@ async def responder_paciente(telefone: str, request: RespostaHumana, current_use
                 "text": {"body": request.mensagem}
             }
             headers = {
-                "Authorization": f"Bearer {ACCESS_TOKEN}",
+                "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
             }
-            response = await client.post(URL, json=data, headers=headers)
+            response = await client.post(url, json=data, headers=headers)
 
             if response.status_code == 200:
                 print(f"✅ [Atendimento] Mensagem enviada para {telefone}.")
@@ -102,13 +140,14 @@ async def responder_paciente(telefone: str, request: RespostaHumana, current_use
 @router.post("/api/admin/atendimentos/{telefone}/devolver", tags=["Atendimento Humano"])
 async def devolver_ao_bot(telefone: str, current_user: dict = Depends(get_current_user)):
     """Devolve o controle da conversa para o bot de IA."""
-    sessao = await sessions_collection.find_one({"telefone": telefone})
+    filtro = {"telefone": telefone, **_get_clinica_filter(current_user)}
+    sessao = await sessions_collection.find_one(filtro)
 
     if not sessao:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
 
     await sessions_collection.update_one(
-        {"telefone": telefone},
+        filtro,
         {"$set": {
             "owner": "bot",
             "human_takeover_at": None,

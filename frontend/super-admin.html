@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgentOS — Super Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base: #0a0f1e;
+      --bg-surface: #111827;
+      --bg-card: #1a2235;
+      --bg-card-hover: #1f2a42;
+      --border: rgba(255,255,255,0.08);
+      --border-active: rgba(99,102,241,0.5);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    .app { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 8px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 8px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .logo-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+    .logo-sub { font-size: 10px; font-weight: 500; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--accent-glow);
+      color: var(--accent-light);
+      border-color: var(--border-active);
+    }
+
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .sidebar-bottom { margin-top: auto; }
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .user-avatar {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role {
+      font-size: 10px;
+      color: var(--accent-light);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .logout-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s;
+    }
+    .logout-btn:hover { color: var(--red); }
+
+    /* ── Main Content ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(99,102,241,0.4); }
+    .btn-danger { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+
+    /* ── Pages ── */
+    .page { display: none; flex: 1; overflow-y: auto; padding: 28px; }
+    .page.active { display: block; }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--border-active); transform: translateY(-2px); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card.accent::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.yellow::before { background: var(--yellow); }
+    .stat-card.red::before { background: var(--red); }
+
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 32px; font-weight: 800; margin-top: 6px; line-height: 1; }
+    .stat-card.accent .stat-value { color: var(--accent-light); }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.yellow .stat-value { color: var(--yellow); }
+    .stat-card.red .stat-value { color: var(--red); }
+
+    /* ── Section Header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title { font-size: 16px; font-weight: 700; }
+    .section-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,0.03); }
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green { background: rgba(16,185,129,0.12); color: var(--green); }
+    .badge-purple { background: rgba(99,102,241,0.12); color: var(--accent-light); }
+    .badge-gray { background: rgba(100,116,139,0.15); color: var(--text-muted); }
+
+    .actions { display: flex; gap: 6px; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 560px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .modal-title { font-size: 18px; font-weight: 700; }
+    .modal-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 20px;
+      padding: 4px;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text-primary); }
+
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .form-textarea { resize: vertical; min-height: 160px; font-size: 13px; }
+    .form-select option { background: var(--bg-card); }
+    .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-outline { background: none; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-outline:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideUp 0.25s ease;
+      min-width: 260px;
+    }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Prompt Textarea Mono ── */
+    .form-textarea.mono {
+      font-family: 'Courier New', Courier, monospace;
+      line-height: 1.6;
+      background: #0d1117;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🤖</div>
+      <div class="logo-text">
+        <span class="logo-name">AgentOS</span>
+        <span class="logo-sub">Super Admin</span>
+      </div>
+    </div>
+
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('clinicas')" id="nav-clinicas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Clínicas
+      </div>
+      <div class="nav-item" onclick="showPage('usuarios')" id="nav-usuarios">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuários
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-badge">
+        <div class="user-avatar" id="avatar-initials">SA</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebar-nome">Super Admin</div>
+          <div class="user-role">Super Admin</div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Sair">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Visão geral de toda a plataforma AgentOS</p>
+        </div>
+        <button class="btn btn-primary" onclick="loadStats()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Atualizar
+        </button>
+      </div>
+      <div style="padding:28px;">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card accent">
+            <div class="stat-label">Clínicas</div>
+            <div class="stat-value" id="stat-clinicas">—</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">Usuários</div>
+            <div class="stat-value" id="stat-usuarios">—</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-label">Conversas</div>
+            <div class="stat-value" id="stat-sessoes">—</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">Em Atend. Humano</div>
+            <div class="stat-value" id="stat-humano">—</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="width:40px;height:40px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">🚀</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">AgentOS — Modelo Agência</div>
+              <div style="font-size:13px;color:var(--text-muted);">Done-For-You • Configuração 100% da Agência</div>
+            </div>
+          </div>
+          <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;">
+            Este painel é exclusivo para a equipe <strong>AgentOS</strong>. Aqui você gerencia clínicas, tokens do WhatsApp, prompts de IA e usuários atendentes de cada cliente. Os clientes finais não têm acesso a estas configurações.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clínicas -->
+    <div class="page" id="page-clinicas">
+      <div class="topbar">
+        <div>
+          <h1>Clínicas</h1>
+          <p>Gerenciar clientes e configurações de integração</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModalClinica()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova Clínica
+        </button>
+      </div>
+      <div style="padding:28px;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Phone ID (Meta)</th>
+                <th>Horários</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="clinicas-tbody">
+              <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usuários -->
+    <div class="page" id="page-usuarios">
+      <div class="topbar">
+        <div>
+          <h1>Usuários</h1>
+          <p>Gerenciar atendentes e administradores</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModalUsuario()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Usuário
+        </button>
+      </div>
+      <div style="padding:28px;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Clínica</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+              <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Clínica ── -->
+<div class="modal-backdrop" id="modal-clinica" onclick="closeModal('modal-clinica', event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-clinica-title">Nova Clínica</div>
+        <div class="modal-sub">Configure a integração com o WhatsApp e o Prompt de IA</div>
+      </div>
+      <button class="modal-close" onclick="closeModalById('modal-clinica')">✕</button>
+    </div>
+
+    <form id="form-clinica" onsubmit="submitClinica(event)">
+      <input type="hidden" id="clinica-edit-id" value="">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome da Clínica *</label>
+          <input class="form-input" id="clinica-nome" placeholder="Ex: Clínica Silva" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Horário de Atendimento</label>
+          <input class="form-input" id="clinica-horarios" placeholder="Seg–Sex, 08h–18h">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">WhatsApp Phone ID (Meta) *</label>
+        <input class="form-input" id="clinica-phone-id" placeholder="Ex: 1044190922118441" required>
+        <div class="form-hint">Encontrado no painel da Meta > WhatsApp > Configurações da API</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Access Token do WhatsApp *</label>
+        <input class="form-input" id="clinica-token" placeholder="EAALy9..." type="password" required>
+        <div class="form-hint">Token de acesso permanente da Meta para esta clínica</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Prompt do Sistema (IA) *</label>
+        <textarea class="form-textarea mono" id="clinica-prompt" placeholder="Você é a assistente virtual da Clínica Silva..." required></textarea>
+        <div class="form-hint">Este é o cérebro do agente. Defina personalidade, dados da clínica e regras de atendimento.</div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModalById('modal-clinica')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-clinica">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar Clínica
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal Usuário ── -->
+<div class="modal-backdrop" id="modal-usuario" onclick="closeModal('modal-usuario', event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Novo Usuário</div>
+        <div class="modal-sub">Crie um atendente vinculado a uma clínica</div>
+      </div>
+      <button class="modal-close" onclick="closeModalById('modal-usuario')">✕</button>
+    </div>
+
+    <form id="form-usuario" onsubmit="submitUsuario(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome Completo *</label>
+          <input class="form-input" id="usuario-nome" placeholder="Ex: Ana Carolina" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input class="form-input" id="usuario-username" placeholder="Ex: ana.silva" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Senha *</label>
+          <input class="form-input" id="usuario-senha" type="password" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Papel (Role) *</label>
+          <select class="form-select" id="usuario-role" onchange="toggleClinicaSelect()">
+            <option value="atendente">Atendente (Clínica)</option>
+            <option value="super_admin">Super Admin (Agência)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" id="clinica-select-group">
+        <label class="form-label">Clínica Vinculada *</label>
+        <select class="form-select" id="usuario-clinica-id">
+          <option value="">— Selecione uma clínica —</option>
+        </select>
+        <div class="form-hint">O atendente só verá conversas desta clínica.</div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModalById('modal-usuario')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Criar Usuário
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Toast Container ── -->
+<div id="toast-container"></div>
+
+<script>
+  // ── Estado global ──
+  let clinicasCache = [];
+  let currentPage = 'dashboard';
+
+  // ── Inicialização ──
+  async function init() {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (!res.ok) { window.location.href = '/login'; return; }
+      const user = await res.json();
+      document.getElementById('sidebar-nome').textContent = user.nome || user.username;
+      document.getElementById('avatar-initials').textContent = (user.nome || user.username).substring(0, 2).toUpperCase();
+    } catch { window.location.href = '/login'; }
+
+    await loadStats();
+    await loadClinicas();
+    await loadUsuarios();
+  }
+
+  // ── Navegação ──
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.getElementById('nav-' + page).classList.add('active');
+    currentPage = page;
+  }
+
+  // ── Stats ──
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/super-admin/stats');
+      const data = await res.json();
+      document.getElementById('stat-clinicas').textContent = data.total_clinicas;
+      document.getElementById('stat-usuarios').textContent = data.total_usuarios;
+      document.getElementById('stat-sessoes').textContent = data.total_sessoes;
+      document.getElementById('stat-humano').textContent = data.sessoes_em_atendimento_humano;
+    } catch (e) { toast('Erro ao carregar estatísticas', 'error'); }
+  }
+
+  // ── Clínicas ──
+  async function loadClinicas() {
+    try {
+      const res = await fetch('/api/super-admin/clinicas');
+      clinicasCache = await res.json();
+      renderClinicas(clinicasCache);
+      populateClinicaSelect(clinicasCache);
+    } catch { toast('Erro ao carregar clínicas', 'error'); }
+  }
+
+  function renderClinicas(clinicas) {
+    const tbody = document.getElementById('clinicas-tbody');
+    if (!clinicas.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">🏥</div><p>Nenhuma clínica cadastrada. Crie a primeira!</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = clinicas.map(c => `
+      <tr>
+        <td><strong>${esc(c.nome)}</strong></td>
+        <td><code style="font-size:12px;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;">${esc(c.whatsapp_phone_id)}</code></td>
+        <td style="font-size:13px;color:var(--text-muted)">${esc(c.horarios_funcionamento || '—')}</td>
+        <td><span class="badge ${c.ativa !== false ? 'badge-green' : 'badge-gray'}">${c.ativa !== false ? '● Ativa' : '○ Inativa'}</span></td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-sm btn-outline" onclick="editClinica('${c._id}')">✏️ Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteClinica('${c._id}', '${esc(c.nome)}')">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function openModalClinica(id) {
+    document.getElementById('clinica-edit-id').value = '';
+    document.getElementById('form-clinica').reset();
+    document.getElementById('modal-clinica-title').textContent = 'Nova Clínica';
+    document.getElementById('modal-clinica').classList.add('open');
+  }
+
+  function editClinica(id) {
+    const c = clinicasCache.find(x => x._id === id);
+    if (!c) return;
+    document.getElementById('clinica-edit-id').value = c._id;
+    document.getElementById('clinica-nome').value = c.nome;
+    document.getElementById('clinica-phone-id').value = c.whatsapp_phone_id;
+    document.getElementById('clinica-token').value = c.whatsapp_token || '';
+    document.getElementById('clinica-horarios').value = c.horarios_funcionamento || '';
+    document.getElementById('clinica-prompt').value = c.prompt_sistema || '';
+    document.getElementById('modal-clinica-title').textContent = 'Editar Clínica';
+    document.getElementById('modal-clinica').classList.add('open');
+  }
+
+  async function submitClinica(e) {
+    e.preventDefault();
+    const editId = document.getElementById('clinica-edit-id').value;
+    const body = {
+      nome: document.getElementById('clinica-nome').value.trim(),
+      whatsapp_phone_id: document.getElementById('clinica-phone-id').value.trim(),
+      whatsapp_token: document.getElementById('clinica-token').value.trim(),
+      horarios_funcionamento: document.getElementById('clinica-horarios').value.trim(),
+      prompt_sistema: document.getElementById('clinica-prompt').value.trim(),
+    };
+
+    const btn = document.getElementById('btn-submit-clinica');
+    btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
+    btn.disabled = true;
+
+    try {
+      let res;
+      if (editId) {
+        res = await fetch(`/api/super-admin/clinicas/${editId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      } else {
+        res = await fetch('/api/super-admin/clinicas', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      }
+
+      if (res.ok) {
+        toast(`Clínica ${editId ? 'atualizada' : 'criada'} com sucesso! 🎉`, 'success');
+        closeModalById('modal-clinica');
+        await loadClinicas();
+        await loadStats();
+      } else {
+        const err = await res.json();
+        toast(`Erro: ${err.detail}`, 'error');
+      }
+    } catch { toast('Erro de comunicação com a API', 'error'); }
+    finally {
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Salvar Clínica';
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteClinica(id, nome) {
+    if (!confirm(`Tem certeza que deseja remover "${nome}" e todos os seus dados? Esta ação é irreversível.`)) return;
+    try {
+      const res = await fetch(`/api/super-admin/clinicas/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast(`Clínica "${nome}" removida.`, 'success');
+        await loadClinicas();
+        await loadStats();
+      } else {
+        const err = await res.json();
+        toast(`Erro: ${err.detail}`, 'error');
+      }
+    } catch { toast('Erro ao remover clínica', 'error'); }
+  }
+
+  // ── Usuários ──
+  async function loadUsuarios() {
+    try {
+      const res = await fetch('/api/super-admin/usuarios');
+      const usuarios = await res.json();
+      renderUsuarios(usuarios);
+    } catch { toast('Erro ao carregar usuários', 'error'); }
+  }
+
+  function renderUsuarios(usuarios) {
+    const tbody = document.getElementById('usuarios-tbody');
+    if (!usuarios.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">👥</div><p>Nenhum usuário cadastrado.</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = usuarios.map(u => {
+      const clinicaNome = u.clinica_id ? (clinicasCache.find(c => c._id === u.clinica_id)?.nome || u.clinica_id) : '—';
+      const roleBadge = u.role === 'super_admin'
+        ? '<span class="badge badge-purple">⭐ Super Admin</span>'
+        : '<span class="badge badge-green">👤 Atendente</span>';
+      return `
+        <tr>
+          <td><strong>${esc(u.nome || '—')}</strong></td>
+          <td><code style="font-size:12px">${esc(u.username)}</code></td>
+          <td>${roleBadge}</td>
+          <td style="font-size:13px;color:var(--text-muted)">${esc(clinicaNome)}</td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="deleteUsuario('${esc(u.username)}')">🗑️ Remover</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function openModalUsuario() {
+    document.getElementById('form-usuario').reset();
+    toggleClinicaSelect();
+    document.getElementById('modal-usuario').classList.add('open');
+  }
+
+  function toggleClinicaSelect() {
+    const role = document.getElementById('usuario-role').value;
+    document.getElementById('clinica-select-group').style.display = role === 'atendente' ? 'block' : 'none';
+  }
+
+  function populateClinicaSelect(clinicas) {
+    const sel = document.getElementById('usuario-clinica-id');
+    sel.innerHTML = '<option value="">— Selecione uma clínica —</option>' + clinicas.map(c => `<option value="${c._id}">${esc(c.nome)}</option>`).join('');
+  }
+
+  async function submitUsuario(e) {
+    e.preventDefault();
+    const role = document.getElementById('usuario-role').value;
+    const body = {
+      nome: document.getElementById('usuario-nome').value.trim(),
+      username: document.getElementById('usuario-username').value.trim(),
+      password: document.getElementById('usuario-senha').value,
+      role,
+      clinica_id: role === 'atendente' ? document.getElementById('usuario-clinica-id').value : null,
+    };
+
+    try {
+      const res = await fetch('/api/super-admin/usuarios', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (res.ok) {
+        toast('Usuário criado com sucesso! 🎉', 'success');
+        closeModalById('modal-usuario');
+        await loadUsuarios();
+        await loadStats();
+      } else {
+        const err = await res.json();
+        toast(`Erro: ${err.detail}`, 'error');
+      }
+    } catch { toast('Erro de comunicação com a API', 'error'); }
+  }
+
+  async function deleteUsuario(username) {
+    if (!confirm(`Remover o usuário "${username}"?`)) return;
+    try {
+      const res = await fetch(`/api/super-admin/usuarios/${username}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast(`Usuário "${username}" removido.`, 'success');
+        await loadUsuarios();
+        await loadStats();
+      } else {
+        const err = await res.json();
+        toast(`Erro: ${err.detail}`, 'error');
+      }
+    } catch { toast('Erro ao remover usuário', 'error'); }
+  }
+
+  // ── Auth ──
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  }
+
+  // ── Modal Helpers ──
+  function closeModal(id, event) {
+    if (event.target.id === id) closeModalById(id);
+  }
+  function closeModalById(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // ── Toast ──
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${msg}`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // ── Utils ──
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Start ──
+  init();
+</script>
+</body>
+</html>
