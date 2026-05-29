@@ -1,21 +1,23 @@
 # Diretrizes para Assistentes de IA (Developer Rules)
 
-Este arquivo serve como instrução padrão para qualquer Assistente de IA que trabalhar neste repositório.
+Este arquivo serve como instrução padrão para qualquer Assistente de IA que trabalhar neste repositório do **AgentOS**.
 
 ## 📂 Pasta de Documentação Padrão (Obsidian)
-Todos os documentos de progresso, status técnico e checklists do projeto são mantidos de forma espelhada na pasta do Obsidian em:
+Todos os documentos de negócio, arquitetura, progresso técnico e checklists do projeto são mantidos de forma espelhada na pasta do Obsidian em:
 👉 `/home/dennysdev/Documentos/Obsidian/Projetos/AgentOS/Docs/`
 
-## 📋 Arquivos a serem mantidos atualizados:
-1. **Checklist do Primeiro Cliente:**
-   - Caminho: `/home/dennysdev/Documentos/Obsidian/Projetos/AgentOS/Docs/AgentOS_Checklist_Primeiro_Cliente.md`
-   - O que atualizar: Itens do produto concluídos, infraestrutura configurada ou tarefas comerciais concluídas.
-2. **Status Técnico e Próximos Passos:**
-   - Caminho: `/home/dennysdev/Documentos/Obsidian/Projetos/AgentOS/Docs/AgentOS_Status_Proximos_Passos.md`
-   - O que atualizar: Stack tecnológica, status dos componentes (Pronto, Parcial, Ausente), pontos de atenção de código e priorização dos próximos passos.
+## 📋 Arquivos Oficiais do Projeto (LEIA SEMPRE ANTES DE COMEÇAR):
+1. **01_Visao_e_Negocio.md:**
+   - Contém a precificação, metas e modelo "SaaS Agência". Atualize quando mudarmos a estratégia de negócio ou métricas do piloto.
+2. **02_Arquitetura_Tecnica.md:**
+   - Contém o mapa da codebase, stack e decisões arquiteturais. Atualize quando instalar novas dependências, mudar arquitetura ou adicionar novos módulos importantes.
+3. **03_Roadmap_e_Checklist.md:**
+   - Contém as tarefas pendentes, backlog e roadmap futuro. **SEMPRE ATUALIZE este documento** ao iniciar ou finalizar uma funcionalidade, marcando o que foi feito com `[x]`.
+4. **04_Historico_e_Refatoracoes.md:**
+   - Registro de grandes implementações concluídas. Adicione seus "Walkthroughs" (resumos do que você fez em uma refatoração grande) neste arquivo para manter o histórico.
 
 ## 🔄 Fluxo de Trabalho Esperado
-Sempre que concluir uma alteração de código, correção de bugs, ou implementação de novas features:
-1. Revise se a alteração afeta o status de algum componente ou checklist.
-2. Acesse e atualize os arquivos correspondentes na pasta do Obsidian.
-3. Se necessário, pergunte ao usuário se ele gostaria de detalhar ou documentar a mudança nas notas.
+Sempre que concluir uma nova conversa, funcionalidade ou correção:
+1. Leia o `03_Roadmap_e_Checklist.md` para remover as tarefas concluídas.
+2. Se houveram mudanças arquiteturais, atualize o `02_Arquitetura_Tecnica.md`.
+3. É **obrigatório** manter essa documentação sincronizada para que as próximas instâncias de IA não percam o contexto.
