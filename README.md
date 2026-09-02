@@ -1,156 +1,172 @@
 # AgentOS
 
-Motor de orquestração de agentes de IA para atendimento no WhatsApp, construído em
-**Python + FastAPI** com **MongoDB**. Um agente conversa com o paciente, coleta os dados
-do lead e entrega o atendimento a um humano quando necessário — devolvendo a conversa ao
-agente sozinho quando o atendimento esfria.
+AI-agent orchestration backend for WhatsApp customer service, built with **Python + FastAPI**
+and **MongoDB**. An agent talks to the patient, collects the lead's data, and hands the
+conversation to a human when needed — automatically returning it to the agent once the
+human interaction goes cold.
 
-Arquitetura **multi-tenant**: uma única instância atende várias clínicas, cada uma com seu
-próprio prompt, credenciais de WhatsApp e dados isolados.
+**Multi-tenant** architecture: a single instance serves many clinics, each with its own
+system prompt, WhatsApp credentials, and isolated data.
 
-> Projeto autoral, usado como base para implantações reais em clínicas.
+> Original project, used as the base for real clinic deployments.
+
+---
+
+## Screenshots
+
+<!--
+Add real screenshots here. Easiest way:
+1. Run the app (see "Running locally").
+2. Capture the chat simulator (/chat), the human-handoff queue (/atendimento), and /super-admin.
+3. Drag them into a GitHub issue comment to get hosted URLs, or commit them to docs/img/.
+4. Replace the lines below.
+-->
+
+| Chat simulator | Handoff queue | Super-admin |
+| :---: | :---: | :---: |
+| _screenshot pending_ | _screenshot pending_ | _screenshot pending_ |
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 | :--- | :--- |
 | API | FastAPI (async), Pydantic v2 |
-| Banco de dados | MongoDB — driver async **Motor**, conexão TLS |
-| Autenticação | JWT (`python-jose`) em cookie, senhas com hash **bcrypt** |
-| Motor de IA | LangChain + OpenRouter (padrão: `google/gemini-2.5-flash`) |
-| Integração | WhatsApp Cloud API (Meta Graph v25) via `httpx` |
-| Testes | pytest + pytest-asyncio |
-| Painéis | HTML/JS servidos pela própria API |
+| Database | MongoDB — async **Motor** driver, TLS connection |
+| Auth | JWT (`python-jose`) in a cookie, passwords hashed with **bcrypt** |
+| AI engine | LangChain + OpenRouter (default: `google/gemini-2.5-flash`) |
+| Integration | WhatsApp Cloud API (Meta Graph v25) via `httpx` |
+| Tests | pytest + pytest-asyncio |
+| Panels | HTML/JS served by the API itself |
 
 ---
 
-## Como funciona
+## How it works
 
 ```
 WhatsApp (Meta)  ──POST /webhook/whatsapp──►  FastAPI
                                                │
-                        BackgroundTask ────────┤ resolve o tenant pelo phone_number_id
+                        BackgroundTask ────────┤ resolves the tenant by phone_number_id
                                                │
-                                   MongoDB ◄───┤ carrega sessão + histórico da conversa
+                                   MongoDB ◄───┤ loads the session + conversation history
                                                │
-                              LangChain/LLM ◄──┤ gera resposta com o prompt daquela clínica
+                              LangChain/LLM ◄──┤ generates a reply with that clinic's prompt
                                                │
-                        WhatsApp API ◄─────────┘ responde ao paciente
+                        WhatsApp API ◄─────────┘ replies to the patient
 ```
 
-Em paralelo, uma **task assíncrona no `lifespan` da aplicação** varre as sessões a cada 60
-segundos e aplica as regras de inatividade do transbordo humano.
+In parallel, an **async task on the application `lifespan`** scans the sessions every 60
+seconds and applies the human-handoff inactivity rules.
 
 ### Multi-tenant
 
-O webhook identifica a clínica pelo `phone_number_id` que a Meta envia, e a partir daí tudo
-é resolvido por tenant: prompt do sistema, credenciais de envio e filtro nas coleções. Cada
-sessão é chaveada por `telefone + empresa_id`, de modo que o mesmo paciente pode falar com
-duas clínicas sem colisão de histórico. Usuários comuns só alcançam os dados da própria
-clínica (`get_empresa_filter`); o papel `super_admin` administra todas.
+The webhook identifies the clinic by the `phone_number_id` that Meta sends, and from there
+everything is resolved per tenant: system prompt, sending credentials, and collection
+filters. Each session is keyed by `phone + empresa_id`, so the same patient can talk to two
+clinics with no history collision. Regular users only reach their own clinic's data
+(`get_empresa_filter`); the `super_admin` role administers all of them.
 
-### Transbordo humano com retorno automático
+### Human handoff with automatic return
 
-Cada sessão tem um `owner`: `bot` ou `human`. Quando um atendente assume, o agente para de
-responder (retorna `_SILENCE_`, e nada é enviado ao paciente). O `auto_return_service`
-então cuida do ciclo de vida daquele atendimento:
+Each session has an `owner`: `bot` or `human`. When an agent takes over, the AI stops
+replying (returns `_SILENCE_`, and nothing is sent to the patient). The `auto_return_service`
+then manages that interaction's lifecycle:
 
-- **5 min** sem resposta do paciente → aviso enviado a ele;
-- **+5 min** de silêncio após o aviso → atendimento encerrado e sessão devolvida ao agente;
-- **20 min** sem qualquer ação do atendente → sessão devolvida ao agente.
+- **5 min** without a patient reply → a notice is sent to them;
+- **+5 min** of silence after the notice → interaction closed, session returned to the AI;
+- **20 min** without any action from the agent → session returned to the AI.
 
-Isso evita o modo de falha mais comum desse tipo de sistema: a conversa fica presa com um
-humano que não voltou, e o paciente deixa de ser atendido por qualquer um dos dois.
+This avoids the most common failure mode of this kind of system: the conversation gets stuck
+with a human who never came back, and the patient stops being served by either side.
 
-### Humanização das respostas
+### Response humanization
 
-O agente devolve blocos separados por `|`, enviados como mensagens sucessivas com atraso
-proporcional ao tamanho do texto (1,5 s a 4,0 s), simulando digitação em vez de despejar um
-parágrafo único.
+The agent returns blocks separated by `|`, sent as successive messages with a delay
+proportional to the text length (1.5 s to 4.0 s), simulating typing instead of dumping a
+single paragraph.
 
 ---
 
-## Estrutura
+## Structure
 
 ```
-main.py                      app FastAPI, lifespan, rotas públicas e painéis
+main.py                      FastAPI app, lifespan, public routes and panels
 controllers/
-  webhook.py                 verificação e recebimento do webhook da Meta
-  atendimento.py             fila de atendimento humano, responder, devolver ao bot
-  auth.py                    login, logout, sessão atual
-  super_admin.py             CRUD de clínicas e usuários, estatísticas
+  webhook.py                 Meta webhook verification and message intake
+  atendimento.py             human-service queue: reply, return to bot
+  auth.py                    login, logout, current session
+  super_admin.py             clinic and user CRUD, statistics
 services/
-  ia_service.py              montagem do prompt, memória da conversa, chamada ao LLM
-  whatsapp_service.py        envio pela Graph API, formatação de número BR, humanização
-  auth_service.py            hash bcrypt, emissão/validação de JWT, dependency de sessão
-  auto_return_service.py     loop de inatividade e devolução ao agente
+  ia_service.py              prompt assembly, conversation memory, LLM call
+  whatsapp_service.py        Graph API sending, BR phone formatting, humanization
+  auth_service.py            bcrypt hashing, JWT issue/validate, session dependency
+  auto_return_service.py     inactivity loop and return-to-agent logic
 core/
-  database.py                cliente Motor e coleções (sessions, users, empresas)
-  config_empresa.py          horário comercial e configuração por clínica
-  prompts.py                 prompt padrão (fallback do simulador)
-frontend/                    painéis: login, atendimento, admin, super-admin
-tests/                       testes de autenticação e do fluxo do webhook
-scripts/criar_usuario.py     criação de atendentes e super admins
+  database.py                Motor client and collections (sessions, users, empresas)
+  config_empresa.py          business hours and per-clinic configuration
+  prompts.py                 default prompt (simulator fallback)
+frontend/                    panels: login, atendimento, admin, super-admin
+tests/                       auth and webhook-flow tests
+scripts/criar_usuario.py     create agents and super admins
 ```
 
 ---
 
-## Rodando localmente
+## Running locally
 
-Requer Python 3.11+ e uma instância de MongoDB.
+Requires Python 3.11+ and a MongoDB instance.
 
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env      # preencha as variáveis (ver abaixo)
-python scripts/criar_usuario.py --super-admin   # cria o primeiro usuário (admin)
+cp .env.example .env      # fill in the variables (see below)
+python scripts/criar_usuario.py --super-admin   # create the first user (admin)
 
 uvicorn main:app --reload
 ```
 
-- API: <http://localhost:8000> · documentação automática: <http://localhost:8000/docs>
-- `GET /health` responde o status do serviço
-- Painéis: `/login`, `/atendimento`, `/admin`, `/super-admin`
-- `/chat` é um simulador que conversa com o agente sem depender do WhatsApp real — dá para
-  testar o agente de uma clínica específica passando `empresa_id`
+- API: <http://localhost:8000> · auto docs: <http://localhost:8000/docs>
+- `GET /health` returns the service status
+- Panels: `/login`, `/atendimento`, `/admin`, `/super-admin`
+- `/chat` is a simulator that talks to the agent without depending on real WhatsApp — you can
+  test a specific clinic's agent by passing `empresa_id`
 
-### Variáveis de ambiente
+### Environment variables
 
-Todas documentadas em [`.env.example`](.env.example): `MONGO_URI`, `JWT_SECRET_KEY`,
+All documented in [`.env.example`](.env.example): `MONGO_URI`, `JWT_SECRET_KEY`,
 `JWT_EXPIRE_HOURS`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `WHATSAPP_ACCESS_TOKEN`,
-`WHATSAPP_PHONE_ID`, `META_VERIFY_TOKEN` e `HUMAN_INACTIVITY_TIMEOUT_MINUTES`.
+`WHATSAPP_PHONE_ID`, `META_VERIFY_TOKEN` and `HUMAN_INACTIVITY_TIMEOUT_MINUTES`.
 
-## Testes
+## Tests
 
 ```bash
 pytest -v
 ```
 
-15 testes cobrindo o handshake de verificação do webhook, o fluxo de recebimento de
-mensagem e a autenticação (hash de senha, emissão e validação de JWT, isolamento por tenant).
+15 tests covering the webhook verification handshake, the message-intake flow, and
+authentication (password hashing, JWT issue/validation, per-tenant isolation).
 
 ---
 
-## Principais rotas
+## Main routes
 
-| Método | Rota | Descrição |
+| Method | Route | Description |
 | :--- | :--- | :--- |
-| `GET` | `/webhook/whatsapp` | handshake de verificação da Meta |
-| `POST` | `/webhook/whatsapp` | recebe mensagens e processa em background |
-| `POST` | `/api/auth/login` | autentica e emite o JWT |
-| `GET` | `/api/admin/atendimentos` | fila de atendimento da clínica |
-| `POST` | `/api/admin/atendimentos/{telefone}/responder` | atendente humano responde |
-| `POST` | `/api/admin/atendimentos/{telefone}/devolver` | devolve a sessão ao agente |
-| `GET` | `/api/admin/leads` | leads captados pelo agente |
-| `GET` | `/api/super-admin/empresas` | administração de clínicas (`super_admin`) |
-| `POST` | `/api/simulator/chat` | conversa com o agente sem WhatsApp |
+| `GET` | `/webhook/whatsapp` | Meta verification handshake |
+| `POST` | `/webhook/whatsapp` | receives messages, processes in background |
+| `POST` | `/api/auth/login` | authenticates and issues the JWT |
+| `GET` | `/api/admin/atendimentos` | the clinic's service queue |
+| `POST` | `/api/admin/atendimentos/{phone}/responder` | human agent replies |
+| `POST` | `/api/admin/atendimentos/{phone}/devolver` | returns the session to the agent |
+| `GET` | `/api/admin/leads` | leads captured by the agent |
+| `GET` | `/api/super-admin/empresas` | clinic administration (`super_admin`) |
+| `POST` | `/api/simulator/chat` | talk to the agent without WhatsApp |
 
 ---
 
-## Autor
+## Author
 
 **Dennys Alves Silva** — [github.com/dennys-swe](https://github.com/dennys-swe) ·
 [linkedin.com/in/dennysdev](https://www.linkedin.com/in/dennysdev/)
