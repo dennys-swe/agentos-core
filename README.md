@@ -14,17 +14,9 @@ system prompt, WhatsApp credentials, and isolated data.
 
 ## Screenshots
 
-<!--
-Add real screenshots here. Easiest way:
-1. Run the app (see "Running locally").
-2. Capture the chat simulator (/chat), the human-handoff queue (/atendimento), and /super-admin.
-3. Drag them into a GitHub issue comment to get hosted URLs, or commit them to docs/img/.
-4. Replace the lines below.
--->
-
 | Chat simulator | Handoff queue | Super-admin |
 | :---: | :---: | :---: |
-| _screenshot pending_ | _screenshot pending_ | _screenshot pending_ |
+| ![Chat simulator](docs/img/chat-simulator.png) | ![Handoff queue](docs/img/handoff-queue.png) | ![Super-admin](docs/img/super-admin.png) |
 
 ---
 
