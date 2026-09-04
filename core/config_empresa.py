@@ -1,9 +1,9 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-DADOS_DA_CLINICA = """
-🏥 INFORMAÇÕES OFICIAIS DA CLÍNICA:
-- Nome: Clínica AgentOS
+DADOS_DA_EMPRESA = """
+🏢 INFORMAÇÕES OFICIAIS DA EMPRESA:
+- Nome: Empresa AgentOS (Simulação Padrão)
 - Horário de Funcionamento: Segunda a Sexta, das 08h às 18h. (Fechado aos finais de semana).
 - Corpo Clínico e Especialidades:
   * Dr. Marcos (Cardiologista)

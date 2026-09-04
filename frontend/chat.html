@@ -62,6 +62,18 @@
             border-bottom-left-radius: 0;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
+        .system-message {
+            align-self: center;
+            background-color: #e2e8f0;
+            color: #475569;
+            font-size: 0.8rem;
+            text-align: center;
+            max-width: 90%;
+            border-radius: 12px;
+            padding: 6px 12px;
+            font-style: italic;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
         .typing-indicator {
             align-self: flex-start;
             background-color: #fff;
@@ -136,6 +148,15 @@
     
     console.log("Conectado com a sessão:", telefoneSimulado);
 
+    // Auth interceptor: redireciona para /login em caso de 401
+    function checkAuth(res) {
+        if (res.status === 401) {
+            window.location.href = '/login';
+            throw new Error('Não autenticado');
+        }
+        return res;
+    }
+
     const messagesContainer = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
@@ -143,9 +164,14 @@
 
     let lastHistoryLength = 0;
 
-    function addMessage(text, isUser) {
+    function addMessage(text, role) {
         const div = document.createElement('div');
-        div.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+        let className = 'message ';
+        if (role === 'user') className += 'user-message';
+        else if (role === 'assistant') className += 'ai-message';
+        else if (role === 'system') className += 'system-message';
+        
+        div.className = className;
         div.innerText = text;
         messagesContainer.insertBefore(div, typingIndicator);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -171,6 +197,7 @@
     async function loadHistory() {
         try {
             const response = await fetch(`/api/admin/atendimentos/${telefoneSimulado}/historico`);
+            checkAuth(response);
             if (response.ok) {
                 const data = await response.json();
                 const historico = data.historico || [];
@@ -178,11 +205,12 @@
                 historico.forEach(msg => {
                     if (msg.role === 'assistant') {
                         msg.content.split('|').forEach(p => {
-                            if(p.trim()) addMessage(p.trim(), false);
+                            if(p.trim()) addMessage(p.trim(), 'assistant');
                         });
-                    } else {
-                        addMessage(msg.content, true);
+                    } else if (msg.role === 'user') {
+                        addMessage(msg.content, 'user');
                     }
+                    // ignoramos msg.role === 'system' no simulador
                 });
                 lastHistoryLength = historico.length;
             }
@@ -195,6 +223,7 @@
     async function syncMessages() {
         try {
             const response = await fetch(`/api/admin/atendimentos/${telefoneSimulado}/historico`);
+            checkAuth(response);
             if (response.ok) {
                 const data = await response.json();
                 const historico = data.historico || [];
@@ -211,9 +240,10 @@
                                 showTyping();
                                 await new Promise(resolve => setTimeout(resolve, 800)); // typing effect
                                 hideTyping();
-                                addMessage(p, false);
+                                addMessage(p, 'assistant');
                             }
                         }
+                        // ignoramos msg.role === 'system' no simulador
                     }
                 }
             }
@@ -225,7 +255,7 @@
         if (!text) return;
 
         // Renderiza a mensagem do usuário na hora
-        addMessage(text, true);
+        addMessage(text, 'user');
         messageInput.value = '';
         showTyping(); // Mostra que está processando
 
@@ -238,6 +268,7 @@
                     mensagem: text
                 })
             });
+            checkAuth(response);
             
             if (response.ok) {
                 const data = await response.json();
@@ -251,11 +282,11 @@
                 }
             } else {
                 hideTyping();
-                addMessage("❌ Erro ao comunicar com o servidor.", false);
+                addMessage("❌ Erro ao comunicar com o servidor.", 'system');
             }
         } catch (error) {
             hideTyping();
-            addMessage("❌ Erro de rede.", false);
+            addMessage("❌ Erro de rede.", 'system');
         }
     }
 

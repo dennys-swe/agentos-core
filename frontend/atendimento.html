@@ -159,7 +159,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen font-inter text-gray-800 flex flex-col">
+<body class="bg-slate-100 h-screen font-inter text-gray-800 flex flex-col overflow-hidden">
 
     <!-- Toast container -->
     <div id="toast-container"></div>
@@ -181,12 +181,19 @@
                 </div>
             </div>
             <div class="flex items-center gap-3">
+                <a href="/chat" target="_blank" class="text-xs bg-teal-800/50 hover:bg-teal-700/50 px-3 py-1 rounded-full border border-teal-500/30 backdrop-blur-sm transition-colors flex items-center gap-1" title="Abrir Simulador">
+                    <span>📱</span> Simulador
+                </a>
                 <span id="badge-count" class="hidden bg-red-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-lg shadow-red-500/30 animate-fade-in">
                     0 pendentes
                 </span>
+                <span id="user-name-display" class="text-xs opacity-80"></span>
                 <span class="text-xs bg-teal-800/50 px-3 py-1 rounded-full border border-teal-500/30 backdrop-blur-sm">
                     🟢 Conectado
                 </span>
+                <button onclick="doLogout()" class="text-xs bg-red-500/20 hover:bg-red-500/40 px-3 py-1.5 rounded-lg border border-red-400/30 transition-colors" title="Sair">
+                    🚪 Sair
+                </button>
             </div>
         </div>
     </nav>
@@ -219,7 +226,7 @@
         </aside>
 
         <!-- ── Chat Area ── -->
-        <main id="chat-area" class="hidden md:flex flex-1 flex-col bg-white relative z-10">
+        <main id="chat-area" class="hidden md:flex flex-1 flex-col bg-white relative z-10 min-h-0">
             <!-- Empty state (default) -->
             <div id="empty-state" class="flex-1 flex items-center justify-center">
                 <div class="text-center animate-fade-in">
@@ -229,7 +236,7 @@
             </div>
 
             <!-- Conversation view (hidden by default) -->
-            <div id="conversation-view" class="hidden flex-1 flex flex-col">
+            <div id="conversation-view" class="hidden flex-1 flex-col min-h-0">
                 <!-- Chat header -->
                 <div id="chat-header" class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
                     <!-- Back button (mobile only) -->
@@ -402,15 +409,42 @@
             return `⏰ Auto-retorno em ~${Math.ceil(remaining)}min`;
         }
 
+        // ── Auth Interceptor ──
+        function checkAuth(res) {
+            if (res.status === 401) {
+                window.location.href = '/login';
+                throw new Error('Não autenticado');
+            }
+            return res;
+        }
+
+        async function loadCurrentUser() {
+            try {
+                const res = await fetch('/api/auth/me');
+                checkAuth(res);
+                const data = await res.json();
+                const el = document.getElementById('user-name-display');
+                if (el) el.textContent = `👤 ${data.nome}`;
+            } catch (e) { /* silencioso */ }
+        }
+
+        async function doLogout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        window.doLogout = doLogout;
+
         // ── API ──
         async function fetchConversations() {
             const res = await fetch('/api/admin/atendimentos');
+            checkAuth(res);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return await res.json();
         }
 
         async function fetchHistory(telefone) {
             const res = await fetch(`/api/admin/atendimentos/${encodeURIComponent(telefone)}/historico`);
+            checkAuth(res);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             return data.historico || [];
@@ -422,6 +456,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mensagem })
             });
+            checkAuth(res);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return await res.json();
         }
@@ -430,6 +465,7 @@
             const res = await fetch(`/api/admin/atendimentos/${encodeURIComponent(telefone)}/devolver`, {
                 method: 'POST'
             });
+            checkAuth(res);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return await res.json();
         }
@@ -531,15 +567,27 @@
 
             let html = '';
             history.forEach((msg, i) => {
+                const animClass = animate && i >= history.length - 3 ? 'animate-fade-in' : '';
+
+                if (msg.role === 'system') {
+                    html += `
+                    <div class="flex justify-center mb-4 mt-2 ${animClass}">
+                        <div class="bg-slate-100 text-slate-500 text-xs px-4 py-1.5 rounded-full text-center max-w-[85%] border border-slate-200">
+                            ${escapeHtml(msg.content)}
+                        </div>
+                    </div>`;
+                    return;
+                }
+
                 const isPatient = msg.role === 'user';
                 const isOutgoing = !isPatient;
                 
-                const animClass = animate && i >= history.length - 3
+                const slideAnim = animate && i >= history.length - 3
                     ? (isOutgoing ? 'animate-slide-right' : 'animate-slide-left')
                     : '';
 
                 html += `
-                <div class="flex ${isOutgoing ? 'justify-end' : 'justify-start'} mb-2 ${animClass}">
+                <div class="flex ${isOutgoing ? 'justify-end' : 'justify-start'} mb-2 ${slideAnim}">
                     <div class="relative max-w-[75%] lg:max-w-[60%] px-3.5 py-2 rounded-xl text-sm shadow-sm
                         ${isOutgoing
                             ? 'bg-emerald-100 border border-emerald-200/80 text-gray-800 bubble-user rounded-tr-sm'
@@ -820,6 +868,7 @@
 
         // ── Init ──
         (async function init() {
+            loadCurrentUser();
             await pollConversations();
             pollTimerList = setInterval(pollConversations, 5000);
             pollTimerChat = setInterval(pollChat, 5000);
