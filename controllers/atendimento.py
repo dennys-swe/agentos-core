@@ -64,7 +64,7 @@ async def obter_historico(telefone: str, current_user: dict = Depends(get_curren
     filtro_empresa = get_empresa_filter(current_user)
     
     # Bypass para super admin testar o simulador
-    if current_user.get("role") == "super_admin" and telefone.startswith("simulador_admin_"):
+    if current_user.get("role") == "super_admin" and telefone.startswith("simulador_"):
         filtro_empresa = {} 
         
     filtro = {"telefone": telefone, **filtro_empresa}
